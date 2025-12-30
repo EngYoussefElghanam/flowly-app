@@ -195,12 +195,24 @@ class _OrderHistoryItem extends StatelessWidget {
     if (order.status == 'CANCELLED') statusColor = Colors.red;
 
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderDetailsScreen(orderId: order.id),
-        ),
-      ),
+      onTap: () =>
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(orderId: order.id),
+            ),
+          ).then((_) {
+            // After returning from OrderDetailsScreen, refresh customer details
+            final token =
+                (context.read<AuthCubit>().state as AuthSuccess).user.token;
+            final cubit = context.read<CustomerDetailsCubit>();
+            if (cubit.state is CustomerDetailsSuccess) {
+              final customerId =
+                  (cubit.state as CustomerDetailsSuccess).customer.id;
+              cubit.getCustomerDetails(customerId, token);
+            }
+          }),
+
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

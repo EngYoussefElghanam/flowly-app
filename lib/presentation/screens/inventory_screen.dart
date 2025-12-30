@@ -20,7 +20,7 @@ class InventoryScreen extends StatelessWidget {
 
     final token = authState.user.token;
     final user = authState.user;
-    final theme = Theme.of(context); // 🎨 Capture Theme
+    final theme = Theme.of(context);
 
     return MultiBlocProvider(
       providers: [
@@ -33,7 +33,6 @@ class InventoryScreen extends StatelessWidget {
       child: Builder(
         builder: (innerContext) {
           return Scaffold(
-            // Background handled by Theme
             appBar: AppBar(
               toolbarHeight: 80,
               elevation: 0,
@@ -71,7 +70,6 @@ class InventoryScreen extends StatelessWidget {
               ),
               actions: [
                 IconButton(
-                  // Use Theme Error color
                   icon: Icon(Icons.logout, color: theme.colorScheme.error),
                   onPressed: () => context.read<AuthCubit>().logout(),
                 ),
@@ -79,46 +77,101 @@ class InventoryScreen extends StatelessWidget {
             ),
             body: Column(
               children: [
+                // 1. THE LIST AREA (NOW REFRESHABLE)
                 Expanded(
                   child: BlocBuilder<InventoryCubit, InventoryState>(
                     builder: (context, state) {
                       if (state is InventoryLoading) {
                         return const Center(child: CircularProgressIndicator());
                       } else if (state is InventoryError) {
-                        return Center(
-                          child: Text(
-                            state.message,
-                            style: TextStyle(color: theme.colorScheme.error),
+                        // 🆕 Added RefreshIndicator here too so users can retry if it fails
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            await context.read<InventoryCubit>().getProducts(
+                              token,
+                            );
+                          },
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.3,
+                              ),
+                              Center(
+                                child: Text(
+                                  state.message,
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       } else if (state is InventorySuccess) {
                         if (state.products.isEmpty) {
-                          return Center(
-                            child: Text(
-                              "No products yet",
-                              style: TextStyle(
-                                color: theme.colorScheme.onSurface,
-                              ),
+                          // 🆕 Added RefreshIndicator to empty state
+                          return RefreshIndicator(
+                            onRefresh: () async {
+                              await context.read<InventoryCubit>().getProducts(
+                                token,
+                              );
+                            },
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                SizedBox(
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.3,
+                                ),
+                                Center(
+                                  child: Text(
+                                    "No products yet",
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         }
-                        return ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: state.products.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            return _ProductItem(product: state.products[index]);
+
+                        // 🆕 THE MAIN REFRESH LOGIC
+                        return RefreshIndicator(
+                          color: theme.primaryColor,
+                          backgroundColor: theme.colorScheme.surface,
+                          onRefresh: () async {
+                            // This triggers the API call without full-screen loading
+                            await context.read<InventoryCubit>().getProducts(
+                              token,
+                            );
                           },
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            physics:
+                                const AlwaysScrollableScrollPhysics(), // Ensures swipe works even if list is short
+                            itemCount: state.products.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              return _ProductItem(
+                                product: state.products[index],
+                              );
+                            },
+                          ),
                         );
                       }
                       return const SizedBox();
                     },
                   ),
                 ),
+
+                // 2. THE STICKY BUTTON (UNCHANGED)
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -134,6 +187,7 @@ class InventoryScreen extends StatelessWidget {
                             ),
                           ),
                         ).then((_) {
+                          // Auto-refresh when coming back from "Add Product"
                           innerContext.read<InventoryCubit>().getProducts(
                             token,
                           );

@@ -4,8 +4,8 @@ import '../../logic/cubits/inventory_cubit.dart';
 import '../../logic/cubits/cart_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../data/repositories/product_repository.dart';
-import '../widgets/pos_product_item.dart'; // Ensure you created this widget earlier!
-import 'checkout_sheet.dart'; // We will create this next
+import '../widgets/pos_product_item.dart';
+import 'checkout_sheet.dart';
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -20,6 +20,7 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final authState = context.read<AuthCubit>().state;
     // Safety check for token
     final token = (authState is AuthSuccess) ? authState.user.token : '';
@@ -49,12 +50,28 @@ class _PosScreenState extends State<PosScreen> {
               ),
             ),
 
-            // 2. PRODUCT GRID
+            // 2. PRODUCT GRID (Now Refreshable)
             Expanded(
               child: BlocBuilder<InventoryCubit, InventoryState>(
                 builder: (context, state) {
                   if (state is InventoryLoading) {
                     return const Center(child: CircularProgressIndicator());
+                  } else if (state is InventoryError) {
+                    // 🔴 Error State (Refreshable)
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        await context.read<InventoryCubit>().getProducts(token);
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.3,
+                          ),
+                          Center(child: Text("Error: ${state.message}")),
+                        ],
+                      ),
+                    );
                   } else if (state is InventorySuccess) {
                     // Filter logic
                     final products = state.products
@@ -63,30 +80,68 @@ class _PosScreenState extends State<PosScreen> {
                         )
                         .toList();
 
-                    if (products.isEmpty)
-                      return const Center(child: Text("No products found"));
+                    // 🟡 Empty State (Refreshable)
+                    if (products.isEmpty) {
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          await context.read<InventoryCubit>().getProducts(
+                            token,
+                          );
+                        },
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.3,
+                            ),
+                            const Center(child: Text("No products found")),
+                          ],
+                        ),
+                      );
+                    }
 
-                    return GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.8,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                          ),
-                      itemCount: products.length,
-                      itemBuilder: (context, index) {
-                        return PosProductItem(
-                          product: products[index],
-                          onTap: () {
-                            // ✨ The Magic Link: Add to Cart Logic
-                            context.read<CartCubit>().addToCart(
-                              products[index],
-                            );
-                          },
-                        );
+                    // 🟢 Success Grid (Refreshable)
+                    return RefreshIndicator(
+                      color: theme.primaryColor,
+                      backgroundColor: theme.colorScheme.surface,
+                      onRefresh: () async {
+                        await context.read<InventoryCubit>().getProducts(token);
                       },
+                      child: GridView.builder(
+                        // AlwaysScrollableScrollPhysics is required for Pull-to-Refresh
+                        // to work even if the list is short!
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 0.8,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          return PosProductItem(
+                            product: products[index],
+                            onTap: () {
+                              context.read<CartCubit>().addToCart(
+                                products[index],
+                              );
+                              ScaffoldMessenger.of(
+                                context,
+                              ).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "Added ${products[index].name}",
+                                  ),
+                                  duration: const Duration(milliseconds: 600),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     );
                   }
                   return const SizedBox();
@@ -94,7 +149,7 @@ class _PosScreenState extends State<PosScreen> {
               ),
             ),
 
-            // 3. CART SUMMARY BAR (Only visible if items exist)
+            // 3. CART SUMMARY BAR
             BlocBuilder<CartCubit, CartState>(
               builder: (context, state) {
                 if (state.items.isEmpty) return const SizedBox.shrink();
@@ -110,18 +165,17 @@ class _PosScreenState extends State<PosScreen> {
                   child: SafeArea(
                     child: ElevatedButton(
                       onPressed: () {
-                        // OPEN THE BOTTOM SHEET
                         showModalBottomSheet(
                           context: context,
-                          isScrollControlled: true, // Full height
+                          isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (_) => const CheckoutSheet(),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.all(16),
-                        backgroundColor: Theme.of(context).primaryColor,
-                        foregroundColor: Colors.white,
+                        backgroundColor: theme.primaryColor,
+                        foregroundColor: theme.colorScheme.onPrimary,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -131,14 +185,14 @@ class _PosScreenState extends State<PosScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: theme.colorScheme.onPrimary,
                             ),
                           ),
                           const Text("View Cart & Pay"),
                           Text(
                             "\$${state.totalAmount.toStringAsFixed(2)}",
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: theme.colorScheme.onPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
