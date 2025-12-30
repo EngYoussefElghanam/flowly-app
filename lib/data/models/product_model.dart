@@ -12,26 +12,18 @@ class ProductModel {
     required this.sellPrice,
     required this.stock,
   });
+
+  // ✅ ROBUST: Use this one for API calls
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'],
+      id: json['id'] as int,
       name: json['name'] ?? 'Unknown Item',
-      // Safety: Handle if API sends Int or Double
-      sellPrice: double.parse((json['sellPrice'] ?? 0).toString()),
-      costPrice: double.parse((json['costPrice'] ?? 0).toString()),
-      stock: int.parse(
-        (json['stockQuantity'] ?? 0).toString(),
-      ), // Check your DB column name!
+      // Safe conversion for prices
+      sellPrice: (json['sellPrice'] ?? 0).toDouble(),
+      costPrice: (json['costPrice'] ?? 0).toDouble(),
+      // Handle key mismatch (stock vs stockQuantity)
+      stock: (json['stockQuantity'] ?? json['stock'] ?? 0) as int,
     );
-  }
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'sellPrice': sellPrice,
-      'costPrice': costPrice,
-      'stockQuantity': stock,
-    };
   }
 
   Map<String, dynamic> toMap() {
@@ -44,13 +36,16 @@ class ProductModel {
     };
   }
 
+  // ✅ FIXED: Made safe against Int/Double crashes
   factory ProductModel.fromMap(Map<String, dynamic> map) {
     return ProductModel(
       id: map['id'] as int,
       name: map['name'] as String,
-      costPrice: map['costPrice'] as double,
-      sellPrice: map['sellPrice'] as double,
-      stock: map['stock'] as int,
+      // Fix: Don't use 'as double', use .toDouble()
+      costPrice: (map['costPrice'] ?? 0).toDouble(),
+      sellPrice: (map['sellPrice'] ?? 0).toDouble(),
+      // Fix: Handle 'stock' or 'stockQuantity'
+      stock: (map['stock'] ?? map['stockQuantity'] ?? 0) as int,
     );
   }
 }

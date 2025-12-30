@@ -1,5 +1,5 @@
 import 'package:flowly/data/models/product_model.dart';
-import 'package:flowly/data/models/cart_item_model.dart'; // Import this!
+import 'package:flowly/data/models/cart_item_model.dart';
 
 class OrderModel {
   final int id;
@@ -9,7 +9,6 @@ class OrderModel {
   final String? notes;
   final String? trackingNumber;
   final String date;
-  // Use CartItemModel because it holds both Product AND Quantity bought
   final List<CartItemModel> items;
 
   OrderModel({
@@ -24,23 +23,20 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
-    // 1. Parse the Products List
     List<CartItemModel> parsedItems = [];
 
     if (json['products'] != null) {
       json['products'].forEach((pJson) {
-        // Sequelize puts the quantity inside a nested object called "orderItem"
-        // We need to extract it safely.
         int qty = 1;
+        // Extract quantity from the nested "orderItem" object
         if (pJson['orderItem'] != null &&
             pJson['orderItem']['quantity'] != null) {
           qty = pJson['orderItem']['quantity'];
         }
 
-        // Create the ProductModel from the JSON
-        final product = ProductModel.fromMap(pJson);
+        // FIX: Use fromJson (which is robust) instead of fromMap
+        final product = ProductModel.fromJson(pJson);
 
-        // Combine them into a CartItemModel
         parsedItems.add(CartItemModel(product: product, quantity: qty));
       });
     }
@@ -48,6 +44,8 @@ class OrderModel {
     return OrderModel(
       id: json['id'] ?? 0,
       status: json['status'] ?? 'NEW',
+      // FIX: Use .toDouble() instead of double.parse()
+      // double.parse() fails if the input is an Int (e.g., 200)
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
       courierName: json['courierName'],
       notes: json['notes'],
