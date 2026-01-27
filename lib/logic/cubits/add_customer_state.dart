@@ -15,5 +15,5 @@ final class AddCustomerSuccess extends AddCustomerState {}
 
 final class AddCustomerError extends AddCustomerState {
   final String message;
-  AddCustomerError(this.message);
+  const AddCustomerError(this.message);
 }

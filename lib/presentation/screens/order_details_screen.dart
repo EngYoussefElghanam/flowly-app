@@ -61,7 +61,7 @@ class OrderDetailsScreen extends StatelessWidget {
                             state.isUpdatingStatus
                                 ? const Center(child: LinearProgressIndicator())
                                 : DropdownButtonFormField<String>(
-                                    value: order.status,
+                                    initialValue: order.status,
                                     decoration: const InputDecoration(
                                       border: OutlineInputBorder(),
                                     ),

@@ -13,10 +13,10 @@ final class AuthLoading extends AuthState {}
 
 final class AuthSuccess extends AuthState {
   final UserModel user;
-  AuthSuccess(this.user);
+  const AuthSuccess(this.user);
 }
 
 final class AuthError extends AuthState {
   final String message;
-  AuthError(this.message);
+  const AuthError(this.message);
 }

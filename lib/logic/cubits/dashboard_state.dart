@@ -13,10 +13,10 @@ final class DashboardLoading extends DashboardState {}
 
 final class DashboardSuccess extends DashboardState {
   final DashboardStatsModel stats;
-  DashboardSuccess(this.stats);
+  const DashboardSuccess(this.stats);
 }
 
 final class DashboardError extends DashboardState {
   final String message;
-  DashboardError(this.message);
+  const DashboardError(this.message);
 }

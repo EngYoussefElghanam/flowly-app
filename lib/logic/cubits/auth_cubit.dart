@@ -22,6 +22,30 @@ class AuthCubit extends Cubit<AuthState> {
     return super.close();
   }
 
+  Future<void> signUpAndLogin(
+    String name,
+    String email,
+    String password,
+    String role,
+    String phone,
+    int? ownerId,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final user = await _authRepo.signUp(
+        name,
+        email,
+        password,
+        phone,
+        role,
+        ownerId,
+      );
+      emit(AuthSuccess(user));
+    } catch (e) {
+      emit(AuthError("SignUp failed $e"));
+    }
+  }
+
   Future<void> login(String email, String password) async {
     emit(AuthLoading());
     try {

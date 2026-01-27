@@ -15,5 +15,5 @@ final class CheckoutSuccess extends CheckoutState {}
 
 final class CheckoutError extends CheckoutState {
   final String message;
-  CheckoutError(this.message);
+  const CheckoutError(this.message);
 }

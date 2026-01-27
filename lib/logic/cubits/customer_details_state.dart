@@ -13,10 +13,10 @@ final class CustomerDetailsLoading extends CustomerDetailsState {}
 
 final class CustomerDetailsSuccess extends CustomerDetailsState {
   final CustomerModel customer;
-  CustomerDetailsSuccess(this.customer);
+  const CustomerDetailsSuccess(this.customer);
 }
 
 final class CustomerDetailsError extends CustomerDetailsState {
   final String message;
-  CustomerDetailsError(this.message);
+  const CustomerDetailsError(this.message);
 }

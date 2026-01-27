@@ -13,10 +13,10 @@ final class InventoryLoading extends InventoryState {}
 
 final class InventorySuccess extends InventoryState {
   final List<ProductModel> products;
-  InventorySuccess(this.products);
+  const InventorySuccess(this.products);
 }
 
 final class InventoryError extends InventoryState {
   final String message;
-  InventoryError(this.message);
+  const InventoryError(this.message);
 }

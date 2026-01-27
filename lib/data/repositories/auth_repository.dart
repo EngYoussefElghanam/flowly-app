@@ -12,7 +12,7 @@ class AuthRepository {
   Future<UserModel> login(String email, String password) async {
     try {
       final response = await _dio.post(
-        "${baseUrl}/api/login",
+        "$baseUrl/api/login",
         data: {'email': email, 'password': password},
       );
       //save
@@ -23,6 +23,40 @@ class AuthRepository {
       return user;
     } catch (e) {
       throw Exception("Login Failed $e");
+    }
+  }
+
+  //sign up
+  Future<UserModel> signUp(
+    String name,
+    String email,
+    String password,
+    String phone,
+    String role,
+    int? ownerId,
+  ) async {
+    try {
+      final data = {
+        "name": name,
+        "email": email,
+        "password": password,
+        "phone": phone,
+        "role": role,
+        "ownerId": ownerId,
+      };
+      final response = await _dio.post("$baseUrl/api/signup", data: data);
+      final user = UserModel.fromJson(response.data);
+      final prefs = await SharedPreferences.getInstance();
+      final userJsonString = jsonEncode(user.toJson());
+      await prefs.setString('user_data', userJsonString);
+      return user;
+    } catch (e) {
+      if (e is DioException) {
+        if (e.response != null && e.response!.data != null) {
+          throw Exception(e.response!.data['message'] ?? "Sign up failed");
+        }
+      }
+      throw Exception("Network error or server unreachable");
     }
   }
 
