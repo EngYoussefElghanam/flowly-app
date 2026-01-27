@@ -1,30 +1,57 @@
-import 'package:flowly/presentation/screens/signup_screen.dart';
+import 'package:flowly/logic/cubits/auth_cubit.dart';
+import 'package:flowly/presentation/screens/main_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../logic/cubits/auth_cubit.dart';
-import 'main_wrapper.dart'; // We navigate to the Wrapper, not just Home
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
+  // 1. CONTROLLERS
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // Note: We removed _ownerIdController since this is for Owners only.
+
   final _formKey = GlobalKey<FormState>();
 
-  // Toggle for showing password
+  // 2. STATE VARIABLES
   bool _isPasswordVisible = false;
 
-  void _login() {
+  // 3. LOGIC: Handle Signup Submission
+  void _signup() {
     if (_formKey.currentState!.validate()) {
+      final name = _nameController.text.trim();
       final email = _emailController.text.trim();
+      final phone = _phoneController.text.trim();
       final password = _passwordController.text.trim();
-      context.read<AuthCubit>().login(email, password);
+
+      // Trigger the Cubit
+      // We hardcode role as 'OWNER' and ownerId as null
+      context.read<AuthCubit>().signUpAndLogin(
+        name,
+        email,
+        password,
+        "OWNER",
+        phone,
+        null, // No Owner ID needed for a new Business Owner
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -32,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // Background handled by Theme
+      appBar: AppBar(title: const Text("Create Business Account")),
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -43,9 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
           } else if (state is AuthSuccess) {
-            // Navigate to MainWrapper (The layout with the Bottom Bar)
-            Navigator.of(context).pushReplacement(
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const MainWrapper()),
+              (route) => false,
             );
           }
         },
@@ -63,75 +90,85 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 1. LOGO / BRANDING
+                    // --- HEADER ---
                     Icon(
-                      Icons.inventory_2_outlined,
-                      size: 80,
+                      Icons
+                          .store_outlined, // Changed icon to represent Business
+                      size: 60,
                       color: theme.colorScheme.primary,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      "Flowly",
+                      "Start Your Business",
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineMedium?.copyWith(
+                      style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     Text(
-                      "Manage your business smarter.",
+                      "Create an owner account to manage your inventory and staff.",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 16,
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
 
-                    // 2. EMAIL INPUT
+                    // --- NAME INPUT ---
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: "Full Name",
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          value!.isEmpty ? "Name is required" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- EMAIL INPUT ---
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: "Email Address",
-                        hintText: "admin@flowly.com",
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                        filled: true,
-                        fillColor: theme.inputDecorationTheme.fillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        prefixIcon: Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(),
                       ),
                       validator: (value) =>
                           value!.contains("@") ? null : "Enter a valid email",
                     ),
                     const SizedBox(height: 16),
 
-                    // 3. PASSWORD INPUT (With Eye Toggle)
+                    // --- PHONE INPUT ---
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: "Phone Number",
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) =>
+                          value!.length < 10 ? "Invalid phone number" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- PASSWORD INPUT ---
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
                       decoration: InputDecoration(
                         labelText: "Password",
-                        prefixIcon: Icon(
-                          Icons.lock_outline,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                        filled: true,
-                        fillColor: theme.inputDecorationTheme.fillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        // Eye Icon Button
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordVisible
                                 ? Icons.visibility
                                 : Icons.visibility_off,
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
                           ),
                           onPressed: () {
                             setState(() {
@@ -141,49 +178,39 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       validator: (value) =>
-                          value!.length > 5 ? null : "Password too short",
+                          value!.length < 6 ? "Min 6 characters" : null,
                     ),
                     const SizedBox(height: 32),
 
-                    // 4. LOGIN BUTTON
+                    // --- SUBMIT BUTTON ---
                     ElevatedButton(
-                      onPressed: _login,
+                      onPressed: _signup,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: theme
-                            .colorScheme
-                            .primary, // Black (Light) / White (Dark)
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        elevation: 5,
-                        shadowColor: theme.colorScheme.primary.withOpacity(0.3),
                       ),
-                      child: Text(
-                        "LOGIN",
+                      child: const Text(
+                        "CREATE OWNER ACCOUNT",
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: theme
-                              .colorScheme
-                              .onPrimary, // White (Light) / Black (Dark)
                         ),
                       ),
                     ),
+
+                    // --- LOGIN LINK ---
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Don't have an account?"),
+                        const Text("Already have an account?"),
                         TextButton(
-                          onPressed: () => {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SignupScreen(),
-                              ),
-                            ),
-                          },
-                          child: Text("Create One"),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Login"),
                         ),
                       ],
                     ),
