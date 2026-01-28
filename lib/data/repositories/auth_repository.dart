@@ -77,4 +77,34 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_data');
   }
+
+  // Create a user WITHOUT logging in (for adding staff)
+  Future<void> createEmployee({
+    required String name,
+    required String email,
+    required String password,
+    required String phone,
+    required int ownerId, // Mandatory for staff
+  }) async {
+    try {
+      final data = {
+        "name": name,
+        "email": email,
+        "password": password,
+        "phone": phone,
+        "role": "EMPLOYEE", // Hardcoded
+        "ownerId": ownerId,
+      };
+
+      // We call the API, but we DO NOT save the response to SharedPreferences
+      await _dio.post("$baseUrl/api/signup", data: data);
+    } catch (e) {
+      if (e is DioException) {
+        if (e.response != null && e.response!.data != null) {
+          throw Exception(e.response!.data['message'] ?? "Failed to add staff");
+        }
+      }
+      throw Exception("Network error or server unreachable");
+    }
+  }
 }

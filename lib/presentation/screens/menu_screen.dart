@@ -1,3 +1,4 @@
+import 'package:flowly/presentation/screens/account_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/theme_cubit.dart';
@@ -50,7 +51,12 @@ class MenuScreen extends StatelessWidget {
               leading: const Icon(Icons.person),
               title: const Text("Account Settings"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {},
+              onTap: () => {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AccountScreen()),
+                ),
+              },
             ),
           ),
 
