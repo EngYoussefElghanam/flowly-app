@@ -36,6 +36,21 @@ class CustomerRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getCustomerStats(
+    int customerId,
+    String token,
+  ) async {
+    try {
+      final response = await _dio.get(
+        "$baseUrl/api/customers/$customerId/stats",
+        options: Options(headers: {"Authorization": "bearer $token"}),
+      );
+      return response.data;
+    } catch (e) {
+      throw Exception("Failed to load stats $e");
+    }
+  }
+
   Future<void> createCustomer({
     required String token,
     required String name,

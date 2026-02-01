@@ -1,9 +1,15 @@
 import 'package:flowly/data/models/order_model.dart';
 import 'package:flowly/presentation/screens/order_details_screen.dart';
+import 'package:flowly/presentation/widgets/customer_smart_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Cubits
 import '../../logic/cubits/customer_details_cubit.dart';
+import '../../logic/cubits/customer_stats_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
+
+// Repositories & Models
 import '../../data/repositories/customer_repository.dart';
 import '../../data/models/customer_model.dart';
 
@@ -19,19 +25,33 @@ class CustomerDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final token = (context.read<AuthCubit>().state as AuthSuccess).user.token;
-    // 1. Capture the Theme
+    // 🛡️ SAFE TOKEN EXTRACTION
+    final authState = context.read<AuthCubit>().state;
+    String token = '';
 
-    return BlocProvider(
-      create: (context) =>
-          CustomerDetailsCubit(CustomerRepository())
-            ..getCustomerDetails(customerId, token), // Keeping your method name
-      child: Scaffold(
-        // Background handled by Theme (Light Grey / Dark Grey)
-        appBar: AppBar(
-          title: Text(customerName),
-          // Styles handled by Theme
+    if (authState is AuthSuccess) {
+      token = authState.user.token;
+    } else {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final customerRepository = CustomerRepository();
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) =>
+              CustomerDetailsCubit(customerRepository)
+                ..getCustomerDetails(customerId, token),
         ),
+        BlocProvider(
+          create: (context) =>
+              CustomerStatsCubit(customerRepository)
+                ..loadStats(customerId, token),
+        ),
+      ],
+      child: Scaffold(
+        appBar: AppBar(title: Text(customerName)),
         body: BlocBuilder<CustomerDetailsCubit, CustomerDetailsState>(
           builder: (context, state) {
             if (state is CustomerDetailsLoading) {
@@ -50,86 +70,95 @@ class CustomerDetailsScreen extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, CustomerModel customer) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // 1. Profile Card (Same as before)
+          // --- 1. PROFILE CARD ---
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              // ✨ DARK MODE FIX: Lighter border instead of shadow for visibility
+              border: isDark
+                  ? Border.all(color: Colors.white.withOpacity(0.1))
+                  : null,
+              boxShadow: isDark
+                  ? [] // No shadow in dark mode (looks cleaner)
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
             ),
             child: Column(
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor: theme.colorScheme.primary,
+                  // ✨ DARK MODE FIX: Use 'inversePrimary' or specific color so icon pops
+                  backgroundColor: isDark
+                      ? Colors.grey[800]
+                      : theme.colorScheme.primary,
                   child: Icon(
                     Icons.person,
                     size: 40,
-                    color: theme.colorScheme.onPrimary,
+                    // ✨ DARK MODE FIX: Icon color adapts
+                    color: isDark ? Colors.white : theme.colorScheme.onPrimary,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   customer.name,
-                  style: const TextStyle(
-                    fontSize: 22,
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   customer.phone,
-                  style: TextStyle(
-                    fontSize: 16,
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
                 const Divider(height: 32),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _infoBadge(context, Icons.location_on, customer.city),
-                    // ✅ NOW SHOWS REAL COUNT
-                    _infoBadge(
-                      context,
-                      Icons.shopping_bag,
-                      "${customer.orders.length} Orders",
-                    ),
                   ],
                 ),
               ],
             ),
           ),
 
+          const SizedBox(height: 16),
+
+          // --- 2. SMART ANALYTICS CARD ---
+          // ⚠️ NOTE: If this looks white-on-white, you need to update
+          // the CustomerSmartCard widget file to handle Dark Mode gradients!
+          const CustomerSmartCard(),
+
           const SizedBox(height: 24),
 
+          // --- 3. ORDER HISTORY HEADER ---
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
               "Order History",
-              style: TextStyle(
-                fontSize: 18,
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
 
           const SizedBox(height: 12),
 
-          // 2. REAL ORDER LIST
+          // --- 4. ORDER LIST ---
           if (customer.orders.isEmpty)
             Container(
               padding: const EdgeInsets.all(24),
@@ -137,6 +166,7 @@ class CustomerDetailsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: isDark ? Border.all(color: Colors.white10) : null,
               ),
               child: Center(
                 child: Text(
@@ -149,9 +179,8 @@ class CustomerDetailsScreen extends StatelessWidget {
             )
           else
             ListView.separated(
-              shrinkWrap: true, // Vital for nesting in SingleChildScrollView
-              physics:
-                  const NeverScrollableScrollPhysics(), // Scroll the whole page, not just list
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               itemCount: customer.orders.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
@@ -174,12 +203,18 @@ class CustomerDetailsScreen extends StatelessWidget {
           color: theme.colorScheme.onSurface.withOpacity(0.5),
         ),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(
+          text,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
 }
 
+// --- SUB-WIDGET: HISTORY ITEM ---
 class _OrderHistoryItem extends StatelessWidget {
   final OrderModel order;
   const _OrderHistoryItem({required this.order});
@@ -187,12 +222,16 @@ class _OrderHistoryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    // Status Color Logic
+    // ✨ DARK MODE FIX: Brighter colors for Dark Mode so they glow
     Color statusColor = Colors.grey;
-    if (order.status == 'NEW') statusColor = Colors.blue;
-    if (order.status == 'COMPLETED') statusColor = Colors.green;
-    if (order.status == 'CANCELLED') statusColor = Colors.red;
+    if (order.status == 'NEW')
+      statusColor = isDark ? Colors.blueAccent : Colors.blue;
+    if (order.status == 'COMPLETED')
+      statusColor = isDark ? Colors.greenAccent : Colors.green;
+    if (order.status == 'CANCELLED')
+      statusColor = isDark ? Colors.redAccent : Colors.red;
 
     return InkWell(
       onTap: () =>
@@ -202,61 +241,71 @@ class _OrderHistoryItem extends StatelessWidget {
               builder: (_) => OrderDetailsScreen(orderId: order.id),
             ),
           ).then((_) {
-            // After returning from OrderDetailsScreen, refresh customer details
-            final token =
-                (context.read<AuthCubit>().state as AuthSuccess).user.token;
-            final cubit = context.read<CustomerDetailsCubit>();
-            if (cubit.state is CustomerDetailsSuccess) {
-              final customerId =
-                  (cubit.state as CustomerDetailsSuccess).customer.id;
-              cubit.getCustomerDetails(customerId, token);
+            // Refresh Logic...
+            if (context.mounted) {
+              // ... (Same refresh logic as before) ...
+              final authState = context.read<AuthCubit>().state;
+              if (authState is AuthSuccess) {
+                final token = authState.user.token;
+                final detailsCubit = context.read<CustomerDetailsCubit>();
+                if (detailsCubit.state is CustomerDetailsSuccess) {
+                  final currentId =
+                      (detailsCubit.state as CustomerDetailsSuccess)
+                          .customer
+                          .id;
+                  detailsCubit.getCustomerDetails(currentId, token);
+                  context.read<CustomerStatsCubit>().loadStats(
+                    currentId,
+                    token,
+                  );
+                }
+              }
             }
           }),
-
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
+          // ✨ DARK MODE FIX: Stronger, visible border in dark mode
           border: Border.all(
-            color: theme.colorScheme.onSurface.withOpacity(0.05),
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : Colors.black.withOpacity(0.05),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left: ID and Date
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "Order #${order.id}",
-                  style: const TextStyle(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   order.date,
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ),
               ],
             ),
-
-            // Right: Amount and Status
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   "\$${order.totalAmount.toStringAsFixed(2)}",
-                  style: TextStyle(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: theme.colorScheme.primary,
+                    // ✨ DARK MODE FIX: Use secondary color (Blue) instead of Primary (White)
+                    color: isDark
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -266,7 +315,8 @@ class _OrderHistoryItem extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    // ✨ DARK MODE FIX: Lower opacity for background to avoid glare
+                    color: statusColor.withOpacity(isDark ? 0.2 : 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
