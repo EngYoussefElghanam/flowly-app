@@ -1,5 +1,4 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
-import 'package:flowly/presentation/screens/main_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -70,10 +69,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             );
           } else if (state is AuthSuccess) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainWrapper()),
-              (route) => false,
-            );
+            Navigator.of(context).pop();
           }
         },
         builder: (context, state) {

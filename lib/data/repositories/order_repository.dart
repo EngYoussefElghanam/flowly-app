@@ -29,7 +29,7 @@ class OrderRepository {
       return response.data['orderId'];
     } catch (e) {
       if (e is DioException && e.response != null) {
-        throw Exception(e.response!.data['message']);
+        throw Exception(e.response!.data['error']);
       }
       throw Exception("Error creating order: $e");
     }

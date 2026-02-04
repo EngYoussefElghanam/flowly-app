@@ -1,8 +1,10 @@
 import 'package:flowly/core/app_theme.dart';
 import 'package:flowly/data/repositories/customer_repository.dart';
+import 'package:flowly/data/repositories/marketing_repository.dart';
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/cart_cubit.dart';
 import 'package:flowly/logic/cubits/customer_stats_cubit.dart';
+import 'package:flowly/logic/cubits/marketing_cubit.dart';
 import 'package:flowly/logic/cubits/staff_cubit.dart';
 import 'package:flowly/logic/cubits/theme_cubit.dart';
 import 'package:flowly/presentation/screens/login_screen.dart';
@@ -32,6 +34,10 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (context) => StaffCubit(AuthRepository())),
         BlocProvider(
           create: (context) => CustomerStatsCubit(CustomerRepository()),
+        ),
+        BlocProvider(
+          create: (context) => MarketingCubit(MarketingRepository()),
+          child: Container(),
         ),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(

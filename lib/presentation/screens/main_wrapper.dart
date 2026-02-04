@@ -1,11 +1,16 @@
-import 'package:flowly/presentation/screens/customer_screen.dart';
-import 'package:flowly/presentation/screens/menu_screen.dart';
-import 'package:flowly/presentation/screens/home_screen.dart'; // 1. Import HomeScreen
-import 'package:flowly/presentation/screens/pos_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Screens
+import 'package:flowly/presentation/screens/home_screen.dart';
+import 'package:flowly/presentation/screens/pos_screen.dart';
+import 'package:flowly/presentation/screens/inventory_screen.dart';
+import 'package:flowly/presentation/screens/customer_screen.dart';
+import 'package:flowly/presentation/screens/growth_page.dart'; // ✅ Imported
+import 'package:flowly/presentation/screens/menu_screen.dart';
+
+// Logic & Navigation
 import '../../logic/cubits/auth_cubit.dart';
-import 'inventory_screen.dart';
 import '../navigation/nav_item.dart';
 
 class MainWrapper extends StatefulWidget {
@@ -28,7 +33,7 @@ class _MainWrapperState extends State<MainWrapper> {
   void _setupTabs() {
     final authState = context.read<AuthCubit>().state;
 
-    // 🛡️ GUARD
+    // 🛡️ Guard
     if (authState is! AuthSuccess) {
       return;
     }
@@ -36,16 +41,21 @@ class _MainWrapperState extends State<MainWrapper> {
     final user = authState.user;
     final role = user.role;
 
+    // ✅ EXPLICIT LISTS (No confusing shortcuts)
     if (role == 'OWNER') {
+      // 👑 OWNER: Overview + Everything else
       _tabs = [
-        // 2. CLEANER: Use the HomeScreen we built earlier!
-        // It already has the Gradient AppBar and DashboardView inside.
         const NavItem(
           page: HomeScreen(),
           label: "Overview",
           icon: Icons.dashboard_outlined,
         ),
         const NavItem(
+          page: PosScreen(), // Owner can sell too
+          label: "Sell",
+          icon: Icons.point_of_sale,
+        ),
+        const NavItem(
           page: InventoryScreen(),
           label: "Inventory",
           icon: Icons.inventory_2_outlined,
@@ -54,13 +64,22 @@ class _MainWrapperState extends State<MainWrapper> {
           page: CustomersScreen(),
           label: "Customers",
           icon: Icons.people_outline,
+        ),
+        const NavItem(
+          page: GrowthPage(),
+          label: "Growth",
+          icon: Icons.auto_graph,
         ),
         const NavItem(page: MenuScreen(), label: "Menu", icon: Icons.menu),
       ];
     } else {
-      // EMPLOYEE VIEW
+      // 👷 EMPLOYEE: Everything except Overview
       _tabs = [
-        NavItem(page: PosScreen(), label: "Sell", icon: Icons.point_of_sale),
+        const NavItem(
+          page: PosScreen(),
+          label: "Sell",
+          icon: Icons.point_of_sale,
+        ),
         const NavItem(
           page: InventoryScreen(),
           label: "Inventory",
@@ -70,6 +89,11 @@ class _MainWrapperState extends State<MainWrapper> {
           page: CustomersScreen(),
           label: "Customers",
           icon: Icons.people_outline,
+        ),
+        const NavItem(
+          page: GrowthPage(),
+          label: "Growth",
+          icon: Icons.auto_graph,
         ),
         const NavItem(page: MenuScreen(), label: "Menu", icon: Icons.menu),
       ];
@@ -82,24 +106,20 @@ class _MainWrapperState extends State<MainWrapper> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // 3. Capture Theme
     final theme = Theme.of(context);
 
     return Scaffold(
-      // The body handles the AppBar, so we just show the page
+      // IndexedStack preserves state (Good for POS/Inventory not reloading)
       body: IndexedStack(
         index: _currentIndex,
         children: _tabs.map((tab) => tab.page).toList(),
       ),
-
-      // 4. THEMED BOTTOM NAVIGATION BAR
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          // Use Surface color (White/DarkGrey) instead of hardcoded white
           color: theme.colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05), // Subtle shadow
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -109,17 +129,12 @@ class _MainWrapperState extends State<MainWrapper> {
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
 
-          // DYNAMIC COLORS
-          backgroundColor:
-              theme.colorScheme.surface, // ⬜ White (Light) / ⬛ Dark Grey (Dark)
-          selectedItemColor:
-              theme.colorScheme.primary, // ⚫ Black (Light) / ⚪ White (Dark)
-          unselectedItemColor: theme.colorScheme.onSurface.withOpacity(
-            0.5,
-          ), // 🔘 Grey
-
+          // Styling
+          backgroundColor: theme.colorScheme.surface,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor: theme.colorScheme.onSurface.withOpacity(0.5),
           showUnselectedLabels: true,
-          type: BottomNavigationBarType.fixed,
+          type: BottomNavigationBarType.fixed, // Required for 4+ tabs
           elevation: 0,
           items: _tabs.map((tab) {
             return BottomNavigationBarItem(
