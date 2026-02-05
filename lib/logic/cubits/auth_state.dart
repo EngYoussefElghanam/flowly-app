@@ -11,6 +11,11 @@ final class AuthInitial extends AuthState {}
 
 final class AuthLoading extends AuthState {}
 
+final class AuthVerifying extends AuthState {
+  final String email;
+  const AuthVerifying(this.email);
+}
+
 final class AuthSuccess extends AuthState {
   final UserModel user;
   const AuthSuccess(this.user);

@@ -1,4 +1,5 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
+import 'package:flowly/presentation/screens/verification_screen.dart'; // We will create this next
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -10,47 +11,25 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // 1. CONTROLLERS
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // Note: We removed _ownerIdController since this is for Owners only.
-
   final _formKey = GlobalKey<FormState>();
-
-  // 2. STATE VARIABLES
   bool _isPasswordVisible = false;
 
-  // 3. LOGIC: Handle Signup Submission
   void _signup() {
     if (_formKey.currentState!.validate()) {
-      final name = _nameController.text.trim();
-      final email = _emailController.text.trim();
-      final phone = _phoneController.text.trim();
-      final password = _passwordController.text.trim();
-
-      // Trigger the Cubit
-      // We hardcode role as 'OWNER' and ownerId as null
-      context.read<AuthCubit>().signUpAndLogin(
-        name,
-        email,
-        password,
+      // Trigger the Cubit (Step 1: Initiate)
+      context.read<AuthCubit>().initiateSignUp(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
         "OWNER",
-        phone,
-        null, // No Owner ID needed for a new Business Owner
+        _phoneController.text.trim(),
+        null,
       );
     }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
@@ -68,8 +47,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 backgroundColor: theme.colorScheme.error,
               ),
             );
-          } else if (state is AuthSuccess) {
-            Navigator.of(context).pop();
+          }
+          // ✅ NEW: If email sent, go to OTP Page
+          else if (state is AuthVerifying) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                // Passing the email so we know who to verify
+                builder: (_) => VerificationScreen(email: state.email),
+              ),
+            );
           }
         },
         builder: (context, state) {
@@ -86,10 +72,8 @@ class _SignupScreenState extends State<SignupScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- HEADER ---
                     Icon(
-                      Icons
-                          .store_outlined, // Changed icon to represent Business
+                      Icons.store_outlined,
                       size: 60,
                       color: theme.colorScheme.primary,
                     ),
@@ -102,7 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     Text(
-                      "Create an owner account to manage your inventory and staff.",
+                      "Create an owner account to manage your inventory.",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -111,7 +95,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // --- NAME INPUT ---
+                    // --- NAME ---
                     TextFormField(
                       controller: _nameController,
                       decoration: const InputDecoration(
@@ -124,7 +108,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // --- EMAIL INPUT ---
+                    // --- EMAIL ---
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -138,21 +122,27 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // --- PHONE INPUT ---
+                    // --- PHONE (OPTIONAL) ---
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       decoration: const InputDecoration(
-                        labelText: "Phone Number",
+                        labelText:
+                            "Phone Number (Optional)", // ✅ Explicit Label
                         prefixIcon: Icon(Icons.phone_outlined),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) =>
-                          value!.length < 10 ? "Invalid phone number" : null,
+                      validator: (value) {
+                        // ✅ Only validate if user typed something
+                        if (value != null && value.isNotEmpty) {
+                          if (value.length < 10) return "Invalid phone number";
+                        }
+                        return null; // Empty is OK
+                      },
                     ),
                     const SizedBox(height: 16),
 
-                    // --- PASSWORD INPUT ---
+                    // --- PASSWORD ---
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -178,7 +168,6 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // --- SUBMIT BUTTON ---
                     ElevatedButton(
                       onPressed: _signup,
                       style: ElevatedButton.styleFrom(
@@ -190,7 +179,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                       child: const Text(
-                        "CREATE OWNER ACCOUNT",
+                        "NEXT: VERIFY EMAIL", // ✅ Updated Text
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -198,7 +187,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
 
-                    // --- LOGIN LINK ---
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

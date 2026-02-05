@@ -25,6 +25,16 @@ class StaffCubit extends Cubit<StaffState> {
         phone: phone,
         ownerId: ownerId,
       );
+      emit(StaffVerifying(email));
+    } catch (e) {
+      emit(StaffError(e.toString().replaceAll("Exception: ", "")));
+    }
+  }
+
+  Future<void> verifyStaff(String email, String code) async {
+    emit(StaffLoading());
+    try {
+      await _authRepo.verifyStaff(code, email);
       emit(StaffSuccess());
     } catch (e) {
       emit(StaffError(e.toString().replaceAll("Exception: ", "")));

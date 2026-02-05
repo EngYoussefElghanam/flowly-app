@@ -1,7 +1,7 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/theme_cubit.dart';
 import 'package:flowly/logic/cubits/settings_cubit.dart'; // ✅ Import SettingsCubit
-import 'package:flowly/presentation/screens/add_stuff_screen.dart';
+import 'package:flowly/presentation/screens/add_staff_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

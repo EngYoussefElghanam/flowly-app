@@ -1,5 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
-import 'package:flowly/logic/cubits/staff_cubit.dart'; // You'll create this logic next
+import 'package:flowly/logic/cubits/staff_cubit.dart';
+import 'package:flowly/presentation/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -21,10 +22,8 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      // 1. Get the current state
       final authState = context.read<AuthCubit>().state;
 
-      // 2. CHECK if it is actually Success before accessing user data
       if (authState is AuthSuccess) {
         final currentUser = authState.user;
 
@@ -32,11 +31,10 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
-          phone: _phoneController.text.trim(),
+          phone: _phoneController.text.trim(), // Will send "" if empty
           ownerId: currentUser.userId,
         );
       } else {
-        // Edge case: User is on this screen but somehow lost session state
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Error: You are not logged in.")),
         );
@@ -59,30 +57,32 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Add New Staff")),
-      // We use BlocListener to handle success/failure of the 'Add Staff' action
       body: BlocListener<StaffCubit, StaffState>(
         listener: (context, state) {
           if (state is StaffLoading) {
-            // Optional: Show loading dialog
             showDialog(
               context: context,
               barrierDismissible: false,
               builder: (_) => const Center(child: CircularProgressIndicator()),
             );
           } else if (state is StaffError) {
-            Navigator.pop(context); // Close loading dialog
+            if (Navigator.canPop(context)) Navigator.pop(context);
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: Colors.red,
+                backgroundColor: theme.colorScheme.error,
               ),
             );
-          } else if (state is StaffSuccess) {
-            Navigator.pop(context); // Close loading dialog
-            Navigator.pop(context); // Close the Screen itself
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Staff member created successfully!"),
+          } else if (state is StaffVerifying) {
+            if (Navigator.canPop(context)) Navigator.pop(context);
+
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => VerificationScreen(
+                  email: state.email,
+                  mode: VerificationMode.addStaff,
+                ),
               ),
             );
           }
@@ -148,17 +148,22 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Phone
+                // Phone (Updated Validator)
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
-                    labelText: "Phone Number",
+                    labelText: "Phone Number (Optional)", // ✅ Explicit Label
                     prefixIcon: Icon(Icons.phone_outlined),
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v!.length < 10 ? "Invalid phone number" : null,
+                  validator: (value) {
+                    // ✅ Allow empty, but validate if typed
+                    if (value != null && value.isNotEmpty) {
+                      if (value.length < 10) return "Invalid phone number";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
 

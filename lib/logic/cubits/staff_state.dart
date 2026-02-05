@@ -11,6 +11,11 @@ class StaffInitial extends StaffState {}
 
 class StaffLoading extends StaffState {}
 
+class StaffVerifying extends StaffState {
+  final String email;
+  const StaffVerifying(this.email);
+}
+
 class StaffSuccess extends StaffState {}
 
 class StaffError extends StaffState {

@@ -22,7 +22,7 @@ class AuthCubit extends Cubit<AuthState> {
     return super.close();
   }
 
-  Future<void> signUpAndLogin(
+  Future<void> initiateSignUp(
     String name,
     String email,
     String password,
@@ -32,7 +32,7 @@ class AuthCubit extends Cubit<AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final user = await _authRepo.signUp(
+      await _authRepo.initiateSignUp(
         name,
         email,
         password,
@@ -40,9 +40,21 @@ class AuthCubit extends Cubit<AuthState> {
         role,
         ownerId,
       );
+      emit(AuthVerifying(email));
+    } catch (e) {
+      final cleanError = e.toString().replaceAll("Exception: ", "");
+      emit(AuthError(cleanError));
+    }
+  }
+
+  Future<void> verifySignUp(String email, String code) async {
+    emit(AuthLoading());
+    try {
+      final user = await _authRepo.verifySignUp(code, email);
       emit(AuthSuccess(user));
     } catch (e) {
-      emit(AuthError("SignUp failed $e"));
+      final cleanError = e.toString().replaceAll("Exception: ", "");
+      emit(AuthError(cleanError));
     }
   }
 
@@ -52,7 +64,8 @@ class AuthCubit extends Cubit<AuthState> {
       final user = await _authRepo.login(email, password);
       emit(AuthSuccess(user));
     } catch (e) {
-      emit(AuthError("Login failed check your email/password $e"));
+      final cleanError = e.toString().replaceAll("Exception: ", "");
+      emit(AuthError(cleanError));
     }
   }
 
