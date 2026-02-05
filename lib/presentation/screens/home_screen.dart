@@ -18,7 +18,6 @@ class HomeScreen extends StatelessWidget {
 
     final user = authState.user;
     final isOwner = user.role == 'OWNER';
-    final theme = Theme.of(context); // 🎨 Capture Theme
 
     // ⚠️ Note: We REMOVED BlocProvider<DashboardCubit> here.
     // Why? Because 'DashboardView' now handles its own Cubit internally.
@@ -60,7 +59,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             // 🎨 Use Theme Error Color (Red)
-            icon: Icon(Icons.logout, color: theme.colorScheme.error),
+            icon: Icon(Icons.logout, color: Colors.redAccent),
             onPressed: () => context.read<AuthCubit>().logout(),
           ),
         ],

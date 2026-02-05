@@ -1,8 +1,9 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
-import 'package:flowly/logic/cubits/theme_cubit.dart'; // Import ThemeCubit
-import 'package:flowly/presentation/screens/add_stuff_screen.dart'; // Correct Import
+import 'package:flowly/logic/cubits/theme_cubit.dart';
+import 'package:flowly/logic/cubits/settings_cubit.dart'; // ✅ Import SettingsCubit
+import 'package:flowly/presentation/screens/add_stuff_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Needed for Clipboard
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AccountScreen extends StatelessWidget {
@@ -11,7 +12,6 @@ class AccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthCubit>().state;
-    // Watch ThemeCubit to update the switch UI
     final currentTheme = context.watch<ThemeCubit>().state;
     final isDarkMode = currentTheme == ThemeMode.dark;
 
@@ -29,7 +29,7 @@ class AccountScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- PROFILE CARD ---
+          // --- PROFILE CARD (Unchanged) ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -107,11 +107,10 @@ class AccountScreen extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.badge_outlined),
               title: const Text("My Owner ID"),
-              subtitle: Text("ID: ${user.userId}"), // Use user.id
+              subtitle: Text("ID: ${user.userId}"),
               trailing: IconButton(
                 icon: const Icon(Icons.copy, size: 20),
                 onPressed: () async {
-                  // ✅ Copy logic
                   await Clipboard.setData(
                     ClipboardData(text: user.userId.toString()),
                   );
@@ -130,7 +129,6 @@ class AccountScreen extends StatelessWidget {
               subtitle: const Text("Create account for an employee"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
-                // ✅ Navigation works now
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AddStaffScreen()),
@@ -138,10 +136,15 @@ class AccountScreen extends StatelessWidget {
               },
             ),
             const Divider(),
+
+            // ✅ NEW AI SLIDERS SECTION
+            const SizedBox(height: 16),
+            // We pass the token to the sub-widget so it can save data
+            _AiConfigurationSection(token: user.token),
             const SizedBox(height: 24),
           ],
 
-          // --- GENERAL SETTINGS ---
+          // --- GENERAL SETTINGS (Unchanged) ---
           Text(
             "General",
             style: TextStyle(
@@ -157,7 +160,6 @@ class AccountScreen extends StatelessWidget {
             trailing: Switch(
               value: isDarkMode,
               onChanged: (val) {
-                // ✅ Toggle Theme logic
                 context.read<ThemeCubit>().toggleTheme(val);
               },
             ),
@@ -174,11 +176,153 @@ class AccountScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 40),
-          Center(
+          const Center(
             child: Text("Version 1.0.0", style: TextStyle(color: Colors.grey)),
           ),
         ],
       ),
+    );
+  }
+}
+
+// 🧠 NEW WIDGET: Handles the Sliders Logic
+class _AiConfigurationSection extends StatefulWidget {
+  final String token;
+  const _AiConfigurationSection({required this.token});
+
+  @override
+  State<_AiConfigurationSection> createState() =>
+      _AiConfigurationSectionState();
+}
+
+class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
+  // Local state for smooth sliding
+  double? _inactiveDays;
+  double? _vipOrders;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load fresh settings when this widget appears
+    context.read<SettingsCubit>().getSettings(widget.token);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<SettingsCubit, SettingsState>(
+      listener: (context, state) {
+        if (state is SettingsLoaded && !_isInitialized) {
+          // Sync sliders only once on load
+          setState(() {
+            _inactiveDays = state.settings['inactiveThreshold']!.toDouble();
+            _vipOrders = state.settings['vipOrderThreshold']!.toDouble();
+            _isInitialized = true;
+          });
+        }
+        if (state is SettingsError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      builder: (context, state) {
+        // Defaults if loading
+        final currentInactive = _inactiveDays ?? 30.0;
+        final currentVip = _vipOrders ?? 5.0;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "AI Growth Engine",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Customize how Flowly identifies opportunities.",
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // --- SLIDER 1 ---
+            _buildSliderHeader(
+              "Inactivity Threshold",
+              "${currentInactive.round()} Days",
+            ),
+            Slider(
+              value: currentInactive,
+              min: 7,
+              max: 90,
+              divisions: 83,
+              label: "${currentInactive.round()} days",
+              activeColor: Colors.purple,
+              onChanged: (val) {
+                setState(() => _inactiveDays = val);
+              },
+              onChangeEnd: (val) {
+                // Auto-save when user releases the slider 💾
+                context.read<SettingsCubit>().updateSettings(
+                  widget.token,
+                  val.round(),
+                  currentVip.round(),
+                );
+              },
+            ),
+
+            // --- SLIDER 2 ---
+            _buildSliderHeader("VIP Threshold", "${currentVip.round()} Orders"),
+            Slider(
+              value: currentVip,
+              min: 1,
+              max: 50,
+              divisions: 49,
+              label: "${currentVip.round()} orders",
+              activeColor: Colors.amber,
+              onChanged: (val) {
+                setState(() => _vipOrders = val);
+              },
+              onChangeEnd: (val) {
+                // Auto-save when user releases the slider 💾
+                context.read<SettingsCubit>().updateSettings(
+                  widget.token,
+                  currentInactive.round(),
+                  val.round(),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSliderHeader(String title, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+        ),
+      ],
     );
   }
 }

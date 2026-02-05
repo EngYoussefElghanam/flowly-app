@@ -17,4 +17,40 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(InventoryError("Error fetching products $e"));
     }
   }
+
+  Future<void> updateProduct(
+    String token,
+    int productId, {
+    required String name,
+    required int stock,
+    required double sellPrice,
+    required double costPrice,
+  }) async {
+    emit(InventoryLoading());
+    try {
+      await _productRepo.updateProduct(
+        token,
+        productId,
+        name: name,
+        stock: stock,
+        sellPrice: sellPrice,
+        costPrice: costPrice,
+      );
+      final products = await _productRepo.getProducts(token);
+      emit(InventorySuccess(products));
+    } catch (e) {
+      emit(InventoryError("Error updating products $e"));
+    }
+  }
+
+  Future<void> deleteProduct(String token, int productId) async {
+    emit(InventoryLoading());
+    try {
+      await _productRepo.deleteProduct(token, productId);
+      final products = await _productRepo.getProducts(token);
+      emit(InventorySuccess(products));
+    } catch (e) {
+      emit(InventoryError("Error deleting products $e"));
+    }
+  }
 }

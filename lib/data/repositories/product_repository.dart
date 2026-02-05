@@ -10,7 +10,7 @@ class ProductRepository {
     try {
       final response = await _dio.get(
         '$baseUrl/api/products',
-        options: Options(headers: {"Authorization": "bearer $token"}),
+        options: Options(headers: {"Authorization": "Bearer $token"}),
       );
       final List rawData = response.data['data'];
       final List<ProductModel> products = rawData
@@ -53,6 +53,41 @@ class ProductRepository {
       }
     } catch (e) {
       throw Exception("Error creating product: $e");
+    }
+  }
+
+  Future<void> updateProduct(
+    String token,
+    int productId, {
+    required String name,
+    required int stock,
+    required double sellPrice,
+    required double costPrice,
+  }) async {
+    try {
+      await _dio.put(
+        "$baseUrl/api/products/$productId",
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+        data: {
+          "name": name,
+          "stockQuantity": stock,
+          "sellPrice": sellPrice,
+          "costPrice": costPrice,
+        },
+      );
+    } catch (e) {
+      throw Exception("Error updating product: $e");
+    }
+  }
+
+  Future<void> deleteProduct(String token, int productId) async {
+    try {
+      await _dio.delete(
+        "$baseUrl/api/products/$productId",
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+      );
+    } catch (e) {
+      throw Exception("Error deleting product: $e");
     }
   }
 }

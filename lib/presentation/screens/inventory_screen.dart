@@ -77,14 +77,13 @@ class InventoryScreen extends StatelessWidget {
             ),
             body: Column(
               children: [
-                // 1. THE LIST AREA (NOW REFRESHABLE)
+                // 1. THE LIST AREA
                 Expanded(
                   child: BlocBuilder<InventoryCubit, InventoryState>(
                     builder: (context, state) {
                       if (state is InventoryLoading) {
                         return const Center(child: CircularProgressIndicator());
                       } else if (state is InventoryError) {
-                        // 🆕 Added RefreshIndicator here too so users can retry if it fails
                         return RefreshIndicator(
                           onRefresh: () async {
                             await context.read<InventoryCubit>().getProducts(
@@ -111,7 +110,6 @@ class InventoryScreen extends StatelessWidget {
                         );
                       } else if (state is InventorySuccess) {
                         if (state.products.isEmpty) {
-                          // 🆕 Added RefreshIndicator to empty state
                           return RefreshIndicator(
                             onRefresh: () async {
                               await context.read<InventoryCubit>().getProducts(
@@ -138,12 +136,11 @@ class InventoryScreen extends StatelessWidget {
                           );
                         }
 
-                        // 🆕 THE MAIN REFRESH LOGIC
+                        // THE LIST
                         return RefreshIndicator(
                           color: theme.primaryColor,
                           backgroundColor: theme.colorScheme.surface,
                           onRefresh: () async {
-                            // This triggers the API call without full-screen loading
                             await context.read<InventoryCubit>().getProducts(
                               token,
                             );
@@ -153,8 +150,7 @@ class InventoryScreen extends StatelessWidget {
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            physics:
-                                const AlwaysScrollableScrollPhysics(), // Ensures swipe works even if list is short
+                            physics: const AlwaysScrollableScrollPhysics(),
                             itemCount: state.products.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 12),
@@ -171,7 +167,7 @@ class InventoryScreen extends StatelessWidget {
                   ),
                 ),
 
-                // 2. THE STICKY BUTTON (UNCHANGED)
+                // 2. THE STICKY ADD BUTTON
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -187,7 +183,6 @@ class InventoryScreen extends StatelessWidget {
                             ),
                           ),
                         ).then((_) {
-                          // Auto-refresh when coming back from "Add Product"
                           innerContext.read<InventoryCubit>().getProducts(
                             token,
                           );
@@ -220,7 +215,7 @@ class _StickyAddButton extends StatelessWidget {
         width: double.infinity,
         height: 60,
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary, // ⚫ Black (Light) / ⚪ White (Dark)
+          color: theme.colorScheme.primary,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -242,9 +237,7 @@ class _StickyAddButton extends StatelessWidget {
             Text(
               "Add New Product",
               style: TextStyle(
-                color: theme
-                    .colorScheme
-                    .onPrimary, // ⚪ White (Light) / ⚫ Black (Dark)
+                color: theme.colorScheme.onPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -256,20 +249,52 @@ class _StickyAddButton extends StatelessWidget {
   }
 }
 
-// 🎨 COMPONENT 2: The Product Item
+// 🎨 COMPONENT 2: The Product Item (UPDATED WITH ACTIONS)
 class _ProductItem extends StatelessWidget {
   final ProductModel product;
   const _ProductItem({required this.product});
 
+  // 🗑️ Delete Confirmation Logic
+  void _confirmDelete(BuildContext context, String token) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Product?"),
+        content: Text(
+          "Are you sure you want to delete '${product.name}'? \n\nIf it has sales history, it will be archived instead.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              // Call the Cubit to delete
+              context.read<InventoryCubit>().deleteProduct(token, product.id);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authState = context.read<AuthCubit>().state;
+    // Safely get token
+    final token = (authState is AuthSuccess) ? authState.user.token : '';
     final bool isLowStock = product.stock < 5;
 
     return Container(
       decoration: BoxDecoration(
-        color:
-            theme.colorScheme.surface, // ⬜ White (Light) / ⬛ Dark Grey (Dark)
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -280,52 +305,103 @@ class _ProductItem extends StatelessWidget {
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          // Use Theme colors for backgrounds
           backgroundColor: isLowStock
               ? theme.colorScheme.error.withOpacity(0.1)
               : theme.colorScheme.secondary.withOpacity(0.1),
           child: Icon(
             Icons.inventory_2,
-            // Use Theme colors for Icons
             color: isLowStock
                 ? theme.colorScheme.error
                 : theme.colorScheme.secondary,
+            size: 20,
           ),
         ),
         title: Text(
           product.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-          // Auto-adapts to theme text color
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Text(
-          "Buy: \$${product.costPrice} | Sell: \$${product.sellPrice}",
+          "Buy: \$${product.costPrice.toStringAsFixed(0)} | Sell: \$${product.sellPrice.toStringAsFixed(0)}",
           style: TextStyle(
             fontSize: 12,
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+        // ⚙️ UPDATED TRAILING SECTION
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min, // Essential for trailing usage
           children: [
-            Text(
-              "${product.stock}",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: isLowStock
-                    ? theme.colorScheme.error
-                    : Colors.green, // Green is universal enough
-              ),
+            // 1. Stock Info
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  "${product.stock}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isLowStock ? theme.colorScheme.error : Colors.green,
+                  ),
+                ),
+                Text(
+                  "Units",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                  ),
+                ),
+              ],
             ),
-            Text(
-              "Units",
-              style: TextStyle(
-                fontSize: 10,
-                color: theme.colorScheme.onSurface.withOpacity(0.4),
+            const SizedBox(width: 4),
+
+            // 2. Vertical Divider (Optional visual separation)
+            Container(
+              height: 24,
+              width: 1,
+              color: theme.dividerColor.withOpacity(0.5),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+
+            // 3. Edit Button (Pen)
+            IconButton(
+              icon: const Icon(Icons.edit, size: 22, color: Colors.blue),
+              tooltip: "Edit Product",
+              onPressed: () {
+                // 🔐 We must pass the EXISTING InventoryCubit to the new screen
+                // so the 'Update' function can refresh this list automatically.
+                final inventoryCubit = context.read<InventoryCubit>();
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MultiBlocProvider(
+                      providers: [
+                        // Pass value to keep the same instance
+                        BlocProvider.value(value: inventoryCubit),
+                        // Pass AddProductCubit for fallback
+                        BlocProvider(
+                          create: (_) => AddProductCubit(ProductRepository()),
+                        ),
+                      ],
+                      child: AddProductScreen(productToEdit: product),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // 4. Delete Button (Trash)
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 22,
+                color: Colors.red,
               ),
+              tooltip: "Delete Product",
+              onPressed: () => _confirmDelete(context, token),
             ),
           ],
         ),
