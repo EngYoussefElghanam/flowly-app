@@ -16,7 +16,10 @@ class StaffVerifying extends StaffState {
   const StaffVerifying(this.email);
 }
 
-class StaffSuccess extends StaffState {}
+class StaffSuccess extends StaffState {
+  final List<StaffModel> employees;
+  const StaffSuccess(this.employees);
+}
 
 class StaffError extends StaffState {
   final String message;

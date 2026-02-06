@@ -1,3 +1,4 @@
+import 'package:flowly/data/models/staff_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flowly/data/repositories/auth_repository.dart';
@@ -31,11 +32,33 @@ class StaffCubit extends Cubit<StaffState> {
     }
   }
 
-  Future<void> verifyStaff(String email, String code) async {
+  Future<void> verifyStaff(String email, String code, String token) async {
     emit(StaffLoading());
     try {
       await _authRepo.verifyStaff(code, email);
-      emit(StaffSuccess());
+      final employees = await _authRepo.getEmployees(token);
+      emit(StaffSuccess(employees));
+    } catch (e) {
+      emit(StaffError(e.toString().replaceAll("Exception: ", "")));
+    }
+  }
+
+  Future<void> getEmployees(String token) async {
+    emit(StaffLoading());
+    try {
+      final List<StaffModel> employees = await _authRepo.getEmployees(token);
+      emit(StaffSuccess(employees));
+    } catch (e) {
+      emit(StaffError(e.toString().replaceAll("Exception: ", "")));
+    }
+  }
+
+  Future<void> deleteEmployee(String token, int intendedId) async {
+    emit(StaffLoading());
+    try {
+      await _authRepo.deleteUser(token, intendedId);
+      final List<StaffModel> employees = await _authRepo.getEmployees(token);
+      emit(StaffSuccess(employees));
     } catch (e) {
       emit(StaffError(e.toString().replaceAll("Exception: ", "")));
     }

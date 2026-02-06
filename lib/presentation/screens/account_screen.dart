@@ -1,6 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/theme_cubit.dart';
-import 'package:flowly/logic/cubits/settings_cubit.dart'; // ✅ Import SettingsCubit
+import 'package:flowly/logic/cubits/settings_cubit.dart';
 import 'package:flowly/presentation/screens/add_staff_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,7 +29,7 @@ class AccountScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- PROFILE CARD (Unchanged) ---
+          // --- PROFILE CARD ---
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -137,14 +137,13 @@ class AccountScreen extends StatelessWidget {
             ),
             const Divider(),
 
-            // ✅ NEW AI SLIDERS SECTION
+            // ✅ AI SLIDERS SECTION (Updated below)
             const SizedBox(height: 16),
-            // We pass the token to the sub-widget so it can save data
             _AiConfigurationSection(token: user.token),
             const SizedBox(height: 24),
           ],
 
-          // --- GENERAL SETTINGS (Unchanged) ---
+          // --- GENERAL SETTINGS ---
           Text(
             "General",
             style: TextStyle(
@@ -175,6 +174,43 @@ class AccountScreen extends StatelessWidget {
               ).showSnackBar(const SnackBar(content: Text("Coming Soon!")));
             },
           ),
+          const SizedBox(height: 16),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.logout),
+            title: const Text("Log Out"),
+            onTap: () {
+              context.read<AuthCubit>().logout();
+            },
+          ),
+
+          // --- DANGER ZONE ---
+          if (isOwner) ...[
+            const SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.red.withOpacity(0.05),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text(
+                  "Delete Business",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  "Permanently delete account and all staff",
+                ),
+                onTap: () =>
+                    _confirmDeleteBusiness(context, user.token, user.userId),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 40),
           const Center(
             child: Text("Version 1.0.0", style: TextStyle(color: Colors.grey)),
@@ -183,9 +219,41 @@ class AccountScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _confirmDeleteBusiness(BuildContext context, String token, int userId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Everything?"),
+        content: const Text(
+          "⚠️ WARNING: This cannot be undone.\n\n"
+          "This will delete your account, your inventory, and ALL your staff accounts permanently.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close Dialog
+              // We use pushNamedAndRemoveUntil to effectively "Logout and Reset"
+              // The AuthCubit will clear state, but this ensures navigation is clean.
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/login', (route) => false);
+              context.read<AuthCubit>().deleteBusiness(token, userId);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("DELETE PERMANENTLY"),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// 🧠 NEW WIDGET: Handles the Sliders Logic
+// 🧠 AI SLIDERS WIDGET (FULLY FIXED)
 class _AiConfigurationSection extends StatefulWidget {
   final String token;
   const _AiConfigurationSection({required this.token});
@@ -199,12 +267,12 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
   // Local state for smooth sliding
   double? _inactiveDays;
   double? _vipOrders;
+  double? _lowStock; // ✅ 1. Add Variable
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Load fresh settings when this widget appears
     context.read<SettingsCubit>().getSettings(widget.token);
   }
 
@@ -213,10 +281,11 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
     return BlocConsumer<SettingsCubit, SettingsState>(
       listener: (context, state) {
         if (state is SettingsLoaded && !_isInitialized) {
-          // Sync sliders only once on load
           setState(() {
             _inactiveDays = state.settings['inactiveThreshold']!.toDouble();
             _vipOrders = state.settings['vipOrderThreshold']!.toDouble();
+            // ✅ 2. Initialize from Backend (Default to 10 if null)
+            _lowStock = (state.settings['lowStockThreshold'] ?? 10).toDouble();
             _isInitialized = true;
           });
         }
@@ -227,9 +296,9 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
         }
       },
       builder: (context, state) {
-        // Defaults if loading
         final currentInactive = _inactiveDays ?? 30.0;
         final currentVip = _vipOrders ?? 5.0;
+        final currentLow = _lowStock ?? 10.0; // ✅ 3. Default value for UI
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,14 +308,14 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
                 Icon(Icons.auto_awesome, color: Colors.purple, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  "AI Growth Engine",
+                  "AI & Automation Engine",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              "Customize how Flowly identifies opportunities.",
+              "Customize how Flowly works for your business.",
               style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
@@ -254,7 +323,7 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
             ),
             const SizedBox(height: 20),
 
-            // --- SLIDER 1 ---
+            // --- SLIDER 1: Inactivity ---
             _buildSliderHeader(
               "Inactivity Threshold",
               "${currentInactive.round()} Days",
@@ -270,16 +339,16 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
                 setState(() => _inactiveDays = val);
               },
               onChangeEnd: (val) {
-                // Auto-save when user releases the slider 💾
                 context.read<SettingsCubit>().updateSettings(
                   widget.token,
                   val.round(),
                   currentVip.round(),
+                  currentLow.round(),
                 );
               },
             ),
 
-            // --- SLIDER 2 ---
+            // --- SLIDER 2: VIP ---
             _buildSliderHeader("VIP Threshold", "${currentVip.round()} Orders"),
             Slider(
               value: currentVip,
@@ -292,11 +361,37 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
                 setState(() => _vipOrders = val);
               },
               onChangeEnd: (val) {
-                // Auto-save when user releases the slider 💾
                 context.read<SettingsCubit>().updateSettings(
                   widget.token,
                   currentInactive.round(),
                   val.round(),
+                  currentLow.round(),
+                );
+              },
+            ),
+
+            // --- SLIDER 3: LOW STOCK (Added) ---
+            const SizedBox(height: 10),
+            _buildSliderHeader(
+              "Low Stock Alert",
+              "${currentLow.round()} Units",
+            ),
+            Slider(
+              value: currentLow,
+              min: 1,
+              max: 50,
+              divisions: 49,
+              label: "${currentLow.round()} units",
+              activeColor: Colors.redAccent, // 🔴 Red for Warning
+              onChanged: (val) {
+                setState(() => _lowStock = val);
+              },
+              onChangeEnd: (val) {
+                context.read<SettingsCubit>().updateSettings(
+                  widget.token,
+                  currentInactive.round(),
+                  currentVip.round(),
+                  val.round(), // ✅ Send new Low Stock value
                 );
               },
             ),

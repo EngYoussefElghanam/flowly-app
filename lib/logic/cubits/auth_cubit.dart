@@ -83,6 +83,18 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> deleteBusiness(String token, int intendedId) async {
+    emit(AuthLoading());
+    try {
+      await _authRepo.deleteUser(token, intendedId);
+      await _authRepo.logout();
+      emit(AuthInitial());
+    } catch (e) {
+      final cleanError = e.toString().replaceAll("Exception: ", "");
+      emit(AuthError(cleanError));
+    }
+  }
+
   Future<void> logout() async {
     emit(AuthLoading());
     try {

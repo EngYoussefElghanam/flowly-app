@@ -6,8 +6,9 @@ import 'package:flowly/presentation/screens/home_screen.dart';
 import 'package:flowly/presentation/screens/pos_screen.dart';
 import 'package:flowly/presentation/screens/inventory_screen.dart';
 import 'package:flowly/presentation/screens/customer_screen.dart';
-import 'package:flowly/presentation/screens/growth_page.dart'; // ✅ Imported
+import 'package:flowly/presentation/screens/growth_page.dart';
 import 'package:flowly/presentation/screens/menu_screen.dart';
+import 'package:flowly/presentation/screens/staff_management_screen.dart'; // ✅ Imported
 
 // Logic & Navigation
 import '../../logic/cubits/auth_cubit.dart';
@@ -65,6 +66,12 @@ class _MainWrapperState extends State<MainWrapper> {
           label: "Customers",
           icon: Icons.people_outline,
         ),
+        // ✅ NEW: Staff Management (Owner Only)
+        const NavItem(
+          page: StaffManagementScreen(),
+          label: "Staff",
+          icon: Icons.badge_outlined,
+        ),
         const NavItem(
           page: GrowthPage(),
           label: "Growth",
@@ -73,7 +80,7 @@ class _MainWrapperState extends State<MainWrapper> {
         const NavItem(page: MenuScreen(), label: "Menu", icon: Icons.menu),
       ];
     } else {
-      // 👷 EMPLOYEE: Everything except Overview
+      // 👷 EMPLOYEE: Everything except Overview & Staff
       _tabs = [
         const NavItem(
           page: PosScreen(),

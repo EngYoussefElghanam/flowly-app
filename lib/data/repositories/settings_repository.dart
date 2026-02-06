@@ -15,6 +15,7 @@ class SettingsRepository {
       return {
         'inactiveThreshold': rawData['inactiveThreshold'] as int,
         'vipOrderThreshold': rawData['vipOrderThreshold'] as int,
+        'lowStockThreshold': rawData['lowStockThreshold'] as int,
       };
     } catch (e) {
       throw Exception("Error happened fetching settings $e");
@@ -25,6 +26,7 @@ class SettingsRepository {
     String token,
     int inactiveThreshold,
     int vipOrderThreshold,
+    int lowStockThreshold,
   ) async {
     try {
       await _dio.put(
@@ -33,6 +35,7 @@ class SettingsRepository {
         data: {
           "inactiveThreshold": inactiveThreshold,
           "vipOrderThreshold": vipOrderThreshold,
+          "lowStockThreshold": lowStockThreshold,
         },
       );
     } catch (e) {

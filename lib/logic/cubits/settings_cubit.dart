@@ -25,6 +25,7 @@ class SettingsCubit extends Cubit<SettingsState> {
     String token,
     int inactiveThreshold,
     int vipOrderThreshold,
+    int lowStockThreshold,
   ) async {
     // 1. Capture the OLD state (Snapshot for rollback) 📸
     final previousState = state;
@@ -35,12 +36,18 @@ class SettingsCubit extends Cubit<SettingsState> {
       SettingsLoaded({
         'inactiveThreshold': inactiveThreshold,
         'vipOrderThreshold': vipOrderThreshold,
+        'lowStockThreshold': lowStockThreshold,
       }),
     );
 
     // 3. Talk to the Server in the background ☁️
     try {
-      await _repo.updateSettings(token, inactiveThreshold, vipOrderThreshold);
+      await _repo.updateSettings(
+        token,
+        inactiveThreshold,
+        vipOrderThreshold,
+        lowStockThreshold,
+      );
       // Success? Great. The UI is already up to date. We do nothing.
     } catch (e) {
       // 4. Failure? ROLLBACK! ↩️

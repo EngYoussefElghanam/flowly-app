@@ -1,5 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/staff_cubit.dart'; // Import StaffCubit
+import 'package:flowly/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -31,9 +32,23 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
       // 🔀 BRANCH LOGIC
       if (widget.mode == VerificationMode.ownerSignup) {
+        // 1. Owner Flow (No Token needed yet)
         context.read<AuthCubit>().verifySignUp(widget.email, code);
       } else {
-        context.read<StaffCubit>().verifyStaff(widget.email, code);
+        // 2. Add Staff Flow (Needs Token)
+        final authState = context.read<AuthCubit>().state;
+
+        if (authState is AuthSuccess) {
+          // Verify & Refresh list using the owner's token
+          // Ensure your UserModel has a getter for token or use authState.user.token!
+          final token = authState.user.token;
+          context.read<StaffCubit>().verifyStaff(widget.email, code, token);
+        } else {
+          // Security fallback: If they lost session, send to login
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        }
       }
     }
   }
@@ -65,7 +80,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               } else if (state is StaffSuccess) {
                 // Success for Staff: Just go back to Dashboard/Staff List
                 Navigator.pop(context); // Close Verification
-                Navigator.pop(context); // Close Add Staff Form
+                Navigator.pop(context, true); // Close Add Staff Form
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Staff added successfully!")),
                 );

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flowly/core/api_client.dart';
 import 'package:flowly/core/constants.dart';
+import 'package:flowly/data/models/staff_model.dart';
 import '../models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -139,6 +140,35 @@ class AuthRepository {
         data: {"code": code, "email": email},
       );
       // The Owner stays logged in.
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  //8. GET employees
+  Future<List<StaffModel>> getEmployees(String token) async {
+    try {
+      final response = await _dio.get(
+        "$baseUrl/api/users/employees",
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+      );
+      final List employeesRaw = response.data['employees'];
+      final List<StaffModel> employees = employeesRaw
+          .map((item) => StaffModel.fromJson(item))
+          .toList();
+      return employees;
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  //9. DELETE user
+  Future<void> deleteUser(String token, int intendedId) async {
+    try {
+      await _dio.delete(
+        "$baseUrl/api/users/$intendedId",
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+      );
     } catch (e) {
       throw _handleError(e);
     }
