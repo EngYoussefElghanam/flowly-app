@@ -1,11 +1,9 @@
-import 'package:flowly/presentation/screens/add_product_screen.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flowly/presentation/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/inventory_cubit.dart';
-import '../../logic/cubits/add_product_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
-import '../../data/repositories/product_repository.dart';
 import '../../data/models/product_model.dart';
 
 class InventoryScreen extends StatelessWidget {
@@ -22,179 +20,158 @@ class InventoryScreen extends StatelessWidget {
     final user = authState.user;
     final theme = Theme.of(context);
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) =>
-              InventoryCubit(ProductRepository())..getProducts(token),
-        ),
-        BlocProvider(create: (_) => AddProductCubit(ProductRepository())),
-      ],
-      child: Builder(
-        builder: (innerContext) {
-          return Scaffold(
-            appBar: AppBar(
-              toolbarHeight: 80,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              flexibleSpace: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF0F2027),
-                      Color(0xFF203A43),
-                      Color(0xFF2C5364),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-              ),
-              centerTitle: false,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Welcome back,",
-                    style: TextStyle(fontSize: 14, color: Colors.white70),
-                  ),
-                  Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.logout, color: theme.colorScheme.error),
-                  onPressed: () => context.read<AuthCubit>().logout(),
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F2027),
+                Color(0xFF203A43),
+                Color(0xFF2C5364),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            body: Column(
-              children: [
-                // 1. THE LIST AREA
-                Expanded(
-                  child: BlocBuilder<InventoryCubit, InventoryState>(
-                    builder: (context, state) {
-                      if (state is InventoryLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (state is InventoryError) {
-                        return RefreshIndicator(
-                          onRefresh: () async {
-                            await context.read<InventoryCubit>().getProducts(
-                              token,
-                            );
-                          },
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: [
-                              SizedBox(
-                                height:
-                                    MediaQuery.of(context).size.height * 0.3,
-                              ),
-                              Center(
-                                child: Text(
-                                  state.message,
-                                  style: TextStyle(
-                                    color: theme.colorScheme.error,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      } else if (state is InventorySuccess) {
-                        if (state.products.isEmpty) {
-                          return RefreshIndicator(
-                            onRefresh: () async {
-                              await context.read<InventoryCubit>().getProducts(
-                                token,
-                              );
-                            },
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              children: [
-                                SizedBox(
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.3,
-                                ),
-                                Center(
-                                  child: Text(
-                                    "No products yet",
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        // THE LIST
-                        return RefreshIndicator(
-                          color: theme.primaryColor,
-                          backgroundColor: theme.colorScheme.surface,
-                          onRefresh: () async {
-                            await context.read<InventoryCubit>().getProducts(
-                              token,
-                            );
-                          },
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: state.products.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              return _ProductItem(
-                                product: state.products[index],
-                              );
-                            },
-                          ),
-                        );
-                      }
-                      return const SizedBox();
+          ),
+        ),
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Welcome back,",
+              style: TextStyle(fontSize: 14, color: Colors.white70),
+            ),
+            Text(
+              user.name,
+              style: const TextStyle(
+                fontSize: 25,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout, color: theme.colorScheme.error),
+            onPressed: () => context.read<AuthCubit>().logout(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // 1. THE LIST AREA
+          Expanded(
+            child: BlocBuilder<InventoryCubit, InventoryState>(
+              builder: (context, state) {
+                if (state is InventoryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is InventoryError) {
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await context.read<InventoryCubit>().getProducts(
+                        token,
+                      );
                     },
-                  ),
-                ),
-
-                // 2. THE STICKY ADD BUTTON
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: _StickyAddButton(
-                      onTap: () {
-                        Navigator.push(
-                          innerContext,
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider(
-                              create: (context) =>
-                                  AddProductCubit(ProductRepository()),
-                              child: const AddProductScreen(),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.3,
+                        ),
+                        Center(
+                          child: Text(
+                            state.message,
+                            style: TextStyle(
+                              color: theme.colorScheme.error,
                             ),
                           ),
-                        ).then((_) {
-                          innerContext.read<InventoryCubit>().getProducts(
-                            token,
-                          );
-                        });
+                        ),
+                      ],
+                    ),
+                  );
+                } else if (state is InventorySuccess) {
+                  if (state.products.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        await context.read<InventoryCubit>().getProducts(
+                          token,
+                        );
+                      },
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.3,
+                          ),
+                          Center(
+                            child: Text(
+                              "No products yet",
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // THE LIST
+                  return RefreshIndicator(
+                    color: theme.primaryColor,
+                    backgroundColor: theme.colorScheme.surface,
+                    onRefresh: () async {
+                      await context.read<InventoryCubit>().getProducts(
+                        token,
+                      );
+                    },
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: state.products.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        return _ProductItem(
+                          product: state.products[index],
+                        );
                       },
                     ),
-                  ),
-                ),
-              ],
+                  );
+                }
+                return const SizedBox();
+              },
             ),
-          );
-        },
+          ),
+
+          // 2. THE STICKY ADD BUTTON
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _StickyAddButton(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    Routes.productForm,
+                    arguments: ProductFormArgs(
+                      inventoryCubit: context.read<InventoryCubit>(),
+                    ),
+                  ).then((_) {
+                    context.read<InventoryCubit>().getProducts(token);
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -374,20 +351,12 @@ class _ProductItem extends StatelessWidget {
                 // so the 'Update' function can refresh this list automatically.
                 final inventoryCubit = context.read<InventoryCubit>();
 
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => MultiBlocProvider(
-                      providers: [
-                        // Pass value to keep the same instance
-                        BlocProvider.value(value: inventoryCubit),
-                        // Pass AddProductCubit for fallback
-                        BlocProvider(
-                          create: (_) => AddProductCubit(ProductRepository()),
-                        ),
-                      ],
-                      child: AddProductScreen(productToEdit: product),
-                    ),
+                  Routes.productForm,
+                  arguments: ProductFormArgs(
+                    inventoryCubit: inventoryCubit,
+                    product: product,
                   ),
                 );
               },
