@@ -236,9 +236,7 @@ class AccountScreen extends StatelessWidget {
               Navigator.pop(ctx); // Close Dialog
               // We use pushNamedAndRemoveUntil to effectively "Logout and Reset"
               // The AuthCubit will clear state, but this ensures navigation is clean.
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/login', (route) => false);
+              Navigator.pop(context);
               context.read<AuthCubit>().deleteBusiness(token, userId);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -281,7 +279,6 @@ class _AiConfigurationSectionState extends State<_AiConfigurationSection> {
           setState(() {
             _inactiveDays = state.settings['inactiveThreshold']!.toDouble();
             _vipOrders = state.settings['vipOrderThreshold']!.toDouble();
-            // ✅ 2. Initialize from Backend (Default to 10 if null)
             _lowStock = (state.settings['lowStockThreshold'] ?? 10).toDouble();
             _isInitialized = true;
           });

@@ -24,12 +24,47 @@ class _GrowthPageState extends State<GrowthPage> {
   final AppinioSwiperController swiperController = AppinioSwiperController();
 
   Future<void> _launchWhatsApp(String phone, String message) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
-    final url = Uri.parse(
-      "https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}",
+    // 1. Clean the number (remove spaces, dashes, parentheses)
+    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+
+    // 2. WhatsApp API requires an international code
+    // If your cleanPhone starts with '01', it's likely a local Egyptian number.
+    // We strip the '0' and add '20'. Adjust this logic if you serve other countries.
+    if (cleanPhone.startsWith('01')) {
+      cleanPhone = '20${cleanPhone.substring(1)}';
+    }
+
+    // 3. Encode the message properly
+    final encodedMessage = Uri.encodeComponent(message);
+
+    // 4. Try the Universal Link first (wa.me)
+    final webUrl = Uri.parse("https://wa.me/$cleanPhone?text=$encodedMessage");
+
+    // 5. Try the Native Deep Link as fallback (whatsapp://)
+    final nativeUrl = Uri.parse(
+      "whatsapp://send?phone=$cleanPhone&text=$encodedMessage",
     );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+
+    try {
+      // First try opening the app directly
+      if (await canLaunchUrl(nativeUrl)) {
+        await launchUrl(nativeUrl);
+      } else if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Could not launch WhatsApp. Check if it's installed.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("WhatsApp Launch Error: $e");
     }
   }
 
@@ -52,11 +87,7 @@ class _GrowthPageState extends State<GrowthPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F2027),
-                Color(0xFF203A43),
-                Color(0xFF2C5364),
-              ],
+              colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -90,9 +121,7 @@ class _GrowthPageState extends State<GrowthPage> {
 
           if (dashboardState is DashboardError) {
             return Center(
-              child: Text(
-                "Error loading dashboard: ${dashboardState.message}",
-              ),
+              child: Text("Error loading dashboard: ${dashboardState.message}"),
             );
           }
 
@@ -182,8 +211,9 @@ class _GrowthPageState extends State<GrowthPage> {
                                 }
                                 final opp =
                                     marketingState.opportunities[previousIndex];
-                                final dirString =
-                                    direction.toString().toLowerCase();
+                                final dirString = direction
+                                    .toString()
+                                    .toLowerCase();
 
                                 if (dirString.contains('right')) {
                                   _launchWhatsApp(
@@ -191,22 +221,22 @@ class _GrowthPageState extends State<GrowthPage> {
                                     opp.aiMessage,
                                   );
                                   context.read<MarketingCubit>().handleAction(
-                                        token,
-                                        "SENT",
-                                        opp.id,
-                                      );
+                                    token,
+                                    "SENT",
+                                    opp.id,
+                                  );
                                 } else if (dirString.contains('left')) {
                                   context.read<MarketingCubit>().handleAction(
-                                        token,
-                                        "SNOOZED",
-                                        opp.id,
-                                      );
+                                    token,
+                                    "SNOOZED",
+                                    opp.id,
+                                  );
                                 } else {
                                   context.read<MarketingCubit>().handleAction(
-                                        token,
-                                        "DISMISSED",
-                                        opp.id,
-                                      );
+                                    token,
+                                    "DISMISSED",
+                                    opp.id,
+                                  );
                                 }
                               }
                             },
@@ -222,45 +252,44 @@ class _GrowthPageState extends State<GrowthPage> {
                                 ),
                               );
                             },
-                            );
-                          } else if (marketingState is MarketingError) {
-                            return Center(
-                              child: Text("Error: ${marketingState.message}"),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
+                          );
+                        } else if (marketingState is MarketingError) {
+                          return Center(
+                            child: Text("Error: ${marketingState.message}"),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      "Operational Highlights",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
+                  ),
 
-                    const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        "Operational Highlights",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
+                  // 📉 Bottom Section: Highlights (Visible to BOTH)
+                  OperationalHighlights(stats: stats),
 
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            );
+          }
 
-                    // 📉 Bottom Section: Highlights (Visible to BOTH)
-                    OperationalHighlights(stats: stats),
-
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              );
-            }
-
-            return const SizedBox.shrink();
-          },
-        ),
+          return const SizedBox.shrink();
+        },
       ),
     );
   }

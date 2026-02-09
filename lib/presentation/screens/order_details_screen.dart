@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/cart_item_model.dart';
 import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/order_details_cubit.dart';
@@ -54,9 +55,7 @@ class OrderDetailsScreen extends StatelessWidget {
                           // ✨ LOGIC: Check the flag from the State
                           // If updating, show spinner. If not, show dropdown.
                           state.isUpdatingStatus
-                              ? const Center(
-                                  child: LinearProgressIndicator(),
-                                )
+                              ? const Center(child: LinearProgressIndicator())
                               : DropdownButtonFormField<String>(
                                   initialValue: order.status,
                                   decoration: const InputDecoration(

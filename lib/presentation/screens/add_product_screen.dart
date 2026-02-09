@@ -95,7 +95,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           if (state is AddProductSuccess) {
             // If we just added a product, refresh inventory and close
             context.read<InventoryCubit>().getProducts(token);
-            Navigator.pop(context);
           } else if (state is AddProductError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
