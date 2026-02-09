@@ -1,95 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/dashboard_cubit.dart';
-import '../../logic/cubits/auth_cubit.dart';
-import '../../data/repositories/dashboard_repository.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authState = context.read<AuthCubit>().state;
-    final token = (authState is AuthSuccess) ? authState.user.token : '';
-
     // 1. Capture Theme
     final theme = Theme.of(context);
 
-    return BlocProvider(
-      create: (context) =>
-          DashboardCubit(DashboardRepository())..getStats(token),
-      child: BlocBuilder<DashboardCubit, DashboardState>(
-        builder: (context, state) {
-          if (state is DashboardLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is DashboardError) {
-            return Center(
-              child: Text(
-                state.message,
-                // 2. Use Theme Error Color
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
-            );
-          } else if (state is DashboardSuccess) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  // 3. Title adapts to Light/Dark mode automatically
-                  Text(
-                    "Overview",
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.0,
-                      children: [
-                        _StatCard(
-                          title: "Revenue",
-                          value:
-                              "\$${state.stats.totalRevenue.toStringAsFixed(2)}",
-                          icon: Icons.attach_money,
-                          color: const Color(0xFF00C853), // Green
-                        ),
-                        _StatCard(
-                          title: "Orders",
-                          value: "${state.stats.totalOrders}",
-                          icon: Icons.shopping_bag_outlined,
-                          color: const Color(0xFF2979FF), // Blue
-                        ),
-                        _StatCard(
-                          title: "Profit",
-                          value:
-                              "\$${state.stats.totalProfit.toStringAsFixed(2)}",
-                          icon: Icons.trending_up,
-                          color: const Color(0xFFAA00FF), // Purple
-                        ),
-                        _StatCard(
-                          title: "Avg. Value",
-                          value:
-                              "\$${state.stats.averageOrderValue.toStringAsFixed(2)}",
-                          icon: Icons.pie_chart_outline,
-                          color: const Color(0xFFFF9100), // Orange
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+    return BlocBuilder<DashboardCubit, DashboardState>(
+      builder: (context, state) {
+        if (state is DashboardLoading) {
           return const Center(child: CircularProgressIndicator());
-        },
-      ),
+        } else if (state is DashboardError) {
+          return Center(
+            child: Text(
+              state.message,
+              // 2. Use Theme Error Color
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          );
+        } else if (state is DashboardSuccess) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                // 3. Title adapts to Light/Dark mode automatically
+                Text(
+                  "Overview",
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.0,
+                    children: [
+                      _StatCard(
+                        title: "Revenue",
+                        value:
+                            "\$${state.stats.totalRevenue.toStringAsFixed(2)}",
+                        icon: Icons.attach_money,
+                        color: const Color(0xFF00C853), // Green
+                      ),
+                      _StatCard(
+                        title: "Orders",
+                        value: "${state.stats.totalOrders}",
+                        icon: Icons.shopping_bag_outlined,
+                        color: const Color(0xFF2979FF), // Blue
+                      ),
+                      _StatCard(
+                        title: "Profit",
+                        value:
+                            "\$${state.stats.totalProfit.toStringAsFixed(2)}",
+                        icon: Icons.trending_up,
+                        color: const Color(0xFFAA00FF), // Purple
+                      ),
+                      _StatCard(
+                        title: "Avg. Value",
+                        value:
+                            "\$${state.stats.averageOrderValue.toStringAsFixed(2)}",
+                        icon: Icons.pie_chart_outline,
+                        color: const Color(0xFFFF9100), // Orange
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
     );
   }
 }

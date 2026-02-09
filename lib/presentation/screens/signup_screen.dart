@@ -1,5 +1,5 @@
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flowly/logic/cubits/auth_cubit.dart';
-import 'package:flowly/presentation/screens/verification_screen.dart'; // We will create this next
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -50,11 +50,9 @@ class _SignupScreenState extends State<SignupScreen> {
           }
           // ✅ NEW: If email sent, go to OTP Page
           else if (state is AuthVerifying) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                // Passing the email so we know who to verify
-                builder: (_) => VerificationScreen(email: state.email),
-              ),
+            Navigator.of(context).pushNamed(
+              Routes.verification,
+              arguments: VerificationArgs(email: state.email),
             );
           }
         },

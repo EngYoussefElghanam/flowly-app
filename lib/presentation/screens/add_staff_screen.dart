@@ -1,5 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/staff_cubit.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flowly/presentation/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -77,12 +78,12 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
           } else if (state is StaffVerifying) {
             if (Navigator.canPop(context)) Navigator.pop(context);
 
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => VerificationScreen(
-                  email: state.email,
-                  mode: VerificationMode.addStaff,
-                ),
+            Navigator.of(context).pushNamed(
+              Routes.verification,
+              arguments: VerificationArgs(
+                email: state.email,
+                mode: VerificationMode.addStaff,
+                staffCubit: context.read<StaffCubit>(),
               ),
             );
           }

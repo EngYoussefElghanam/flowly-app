@@ -1,6 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/staff_cubit.dart';
-import 'package:flowly/presentation/screens/add_staff_screen.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -38,10 +38,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddStaffScreen()),
-          ).then((result) {
+          Navigator.pushNamed(context, Routes.addStaff).then((result) {
             if (result == true) {
               _loadData();
             }

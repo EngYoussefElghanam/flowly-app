@@ -1,5 +1,4 @@
 import 'package:flowly/data/models/order_model.dart';
-import 'package:flowly/presentation/screens/order_details_screen.dart';
 import 'package:flowly/presentation/widgets/customer_smart_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,9 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/customer_details_cubit.dart';
 import '../../logic/cubits/customer_stats_cubit.dart';
 import '../../logic/cubits/auth_cubit.dart';
-
-// Repositories & Models
-import '../../data/repositories/customer_repository.dart';
+import '../../core/routing/app_router.dart';
 import '../../data/models/customer_model.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
@@ -25,45 +22,25 @@ class CustomerDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🛡️ SAFE TOKEN EXTRACTION
+    // 🛡️ SAFE SESSION CHECK
     final authState = context.read<AuthCubit>().state;
-    String token = '';
-
-    if (authState is AuthSuccess) {
-      token = authState.user.token;
-    } else {
+    if (authState is! AuthSuccess) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final customerRepository = CustomerRepository();
-
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (context) =>
-              CustomerDetailsCubit(customerRepository)
-                ..getCustomerDetails(customerId, token),
-        ),
-        BlocProvider(
-          create: (context) =>
-              CustomerStatsCubit(customerRepository)
-                ..loadStats(customerId, token),
-        ),
-      ],
-      child: Scaffold(
-        appBar: AppBar(title: Text(customerName)),
-        body: BlocBuilder<CustomerDetailsCubit, CustomerDetailsState>(
-          builder: (context, state) {
-            if (state is CustomerDetailsLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is CustomerDetailsError) {
-              return Center(child: Text(state.message));
-            } else if (state is CustomerDetailsSuccess) {
-              return _buildContent(context, state.customer);
-            }
-            return const SizedBox();
-          },
-        ),
+    return Scaffold(
+      appBar: AppBar(title: Text(customerName)),
+      body: BlocBuilder<CustomerDetailsCubit, CustomerDetailsState>(
+        builder: (context, state) {
+          if (state is CustomerDetailsLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is CustomerDetailsError) {
+            return Center(child: Text(state.message));
+          } else if (state is CustomerDetailsSuccess) {
+            return _buildContent(context, state.customer);
+          }
+          return const SizedBox();
+        },
       ),
     );
   }
@@ -235,11 +212,10 @@ class _OrderHistoryItem extends StatelessWidget {
 
     return InkWell(
       onTap: () =>
-          Navigator.push(
+          Navigator.pushNamed(
             context,
-            MaterialPageRoute(
-              builder: (_) => OrderDetailsScreen(orderId: order.id),
-            ),
+            Routes.orderDetails,
+            arguments: OrderDetailsArgs(orderId: order.id),
           ).then((_) {
             // Refresh Logic...
             if (context.mounted) {

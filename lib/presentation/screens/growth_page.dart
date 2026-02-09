@@ -8,10 +8,6 @@ import '../../logic/cubits/auth_cubit.dart';
 import '../../logic/cubits/marketing_cubit.dart';
 import '../../logic/cubits/dashboard_cubit.dart';
 
-// Repositories
-import '../../data/repositories/marketing_repository.dart';
-import '../../data/repositories/dashboard_repository.dart';
-
 // Widgets
 import '../widgets/business_state_card.dart';
 import '../widgets/operational_highlights.dart';
@@ -47,203 +43,185 @@ class _GrowthPageState extends State<GrowthPage> {
     final user = authState.user; // We use this for Role Check
     final theme = Theme.of(context);
     final String titleName = user.role == 'OWNER' ? user.name : "The Business";
-    // 2. 💉 MULTI-PROVIDER
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) =>
-              MarketingCubit(MarketingRepository())..loadOpportunities(token),
-        ),
-        BlocProvider(
-          create: (_) => DashboardCubit(DashboardRepository())..getStats(token),
-        ),
-      ],
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: AppBar(
-          toolbarHeight: 80,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F2027),
-                  Color(0xFF203A43),
-                  Color(0xFF2C5364),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F2027),
+                Color(0xFF203A43),
+                Color(0xFF2C5364),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Growth Engine",
-                style: TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              Text(
-                "Opportunities for $titleName",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
         ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Growth Engine",
+              style: TextStyle(fontSize: 14, color: Colors.white70),
+            ),
+            Text(
+              "Opportunities for $titleName",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
 
-        // 🔄 3. WRAP EVERYTHING IN DASHBOARD CUBIT
-        body: BlocBuilder<DashboardCubit, DashboardState>(
-          builder: (context, dashboardState) {
-            if (dashboardState is DashboardLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      // 🔄 3. WRAP EVERYTHING IN DASHBOARD CUBIT
+      body: BlocBuilder<DashboardCubit, DashboardState>(
+        builder: (context, dashboardState) {
+          if (dashboardState is DashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (dashboardState is DashboardError) {
-              return Center(
-                child: Text(
-                  "Error loading dashboard: ${dashboardState.message}",
-                ),
-              );
-            }
+          if (dashboardState is DashboardError) {
+            return Center(
+              child: Text(
+                "Error loading dashboard: ${dashboardState.message}",
+              ),
+            );
+          }
 
-            if (dashboardState is DashboardSuccess) {
-              final stats = dashboardState.stats;
+          if (dashboardState is DashboardSuccess) {
+            final stats = dashboardState.stats;
 
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🔒 ROLE CHECK: Only OWNER sees the Financial Stats
-                    if (user.role == 'OWNER') ...[
-                      BusinessStatsCard(stats: stats),
-                      const SizedBox(height: 10),
-                    ] else ...[
-                      // Small spacing for Employee instead of the big card
-                      const SizedBox(height: 20),
-                    ],
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔒 ROLE CHECK: Only OWNER sees the Financial Stats
+                  if (user.role == 'OWNER') ...[
+                    BusinessStatsCard(stats: stats),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    // Small spacing for Employee instead of the big card
+                    const SizedBox(height: 20),
+                  ],
 
-                    // ... (Marketing Title Section) ...
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Text(
-                            "AI Revenue Generator",
+                  // ... (Marketing Title Section) ...
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Text(
+                          "AI Revenue Generator",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            "BETA",
                             style: TextStyle(
-                              fontSize: 18,
+                              color: Colors.purple,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              "BETA",
-                              style: TextStyle(
-                                color: Colors.purple,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
 
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                    // 🎠 Middle Section: Swiper (Visible to BOTH)
-                    SizedBox(
-                      height: 420,
-                      child: BlocBuilder<MarketingCubit, MarketingState>(
-                        builder: (context, marketingState) {
-                          if (marketingState is MarketingLoading) {
-                            return Center(
-                              child: CircularProgressIndicator(
-                                color: theme.colorScheme.primary,
-                              ),
-                            );
-                          }
-                          if (marketingState is MarketingEmpty) {
-                            return _buildEmptyState(theme);
-                          }
-                          if (marketingState is MarketingLoaded) {
-                            return AppinioSwiper(
-                              controller: swiperController,
-                              cardCount: marketingState.opportunities.length,
-                              backgroundCardCount: 0,
-                              onEnd: () {
-                                context.read<MarketingCubit>().forceEmpty();
-                              },
-                              onSwipeEnd:
-                                  (previousIndex, targetIndex, activity) {
-                                    if (activity is Swipe) {
-                                      final direction = activity.direction;
-                                      if (previousIndex >=
-                                          marketingState.opportunities.length)
-                                        return;
-                                      final opp = marketingState
-                                          .opportunities[previousIndex];
-                                      final dirString = direction
-                                          .toString()
-                                          .toLowerCase();
+                  // 🎠 Middle Section: Swiper (Visible to BOTH)
+                  SizedBox(
+                    height: 420,
+                    child: BlocBuilder<MarketingCubit, MarketingState>(
+                      builder: (context, marketingState) {
+                        if (marketingState is MarketingLoading) {
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: theme.colorScheme.primary,
+                            ),
+                          );
+                        }
+                        if (marketingState is MarketingEmpty) {
+                          return _buildEmptyState(theme);
+                        }
+                        if (marketingState is MarketingLoaded) {
+                          return AppinioSwiper(
+                            controller: swiperController,
+                            cardCount: marketingState.opportunities.length,
+                            backgroundCardCount: 0,
+                            onEnd: () {
+                              context.read<MarketingCubit>().forceEmpty();
+                            },
+                            onSwipeEnd: (previousIndex, targetIndex, activity) {
+                              if (activity is Swipe) {
+                                final direction = activity.direction;
+                                if (previousIndex >=
+                                    marketingState.opportunities.length) {
+                                  return;
+                                }
+                                final opp =
+                                    marketingState.opportunities[previousIndex];
+                                final dirString =
+                                    direction.toString().toLowerCase();
 
-                                      if (dirString.contains('right')) {
-                                        _launchWhatsApp(
-                                          opp.customer.phone ?? "",
-                                          opp.aiMessage,
-                                        );
-                                        context
-                                            .read<MarketingCubit>()
-                                            .handleAction(
-                                              token,
-                                              "SENT",
-                                              opp.id,
-                                            );
-                                      } else if (dirString.contains('left')) {
-                                        context
-                                            .read<MarketingCubit>()
-                                            .handleAction(
-                                              token,
-                                              "SNOOZED",
-                                              opp.id,
-                                            );
-                                      } else {
-                                        context
-                                            .read<MarketingCubit>()
-                                            .handleAction(
-                                              token,
-                                              "DISMISSED",
-                                              opp.id,
-                                            );
-                                      }
-                                    }
-                                  },
-                              cardBuilder: (context, index) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 10,
-                                  ),
-                                  child: MarketingCard(
-                                    opportunity:
-                                        marketingState.opportunities[index],
-                                  ),
-                                );
-                              },
+                                if (dirString.contains('right')) {
+                                  _launchWhatsApp(
+                                    opp.customer.phone ?? "",
+                                    opp.aiMessage,
+                                  );
+                                  context.read<MarketingCubit>().handleAction(
+                                        token,
+                                        "SENT",
+                                        opp.id,
+                                      );
+                                } else if (dirString.contains('left')) {
+                                  context.read<MarketingCubit>().handleAction(
+                                        token,
+                                        "SNOOZED",
+                                        opp.id,
+                                      );
+                                } else {
+                                  context.read<MarketingCubit>().handleAction(
+                                        token,
+                                        "DISMISSED",
+                                        opp.id,
+                                      );
+                                }
+                              }
+                            },
+                            cardBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                child: MarketingCard(
+                                  opportunity:
+                                      marketingState.opportunities[index],
+                                ),
+                              );
+                            },
                             );
                           } else if (marketingState is MarketingError) {
                             return Center(

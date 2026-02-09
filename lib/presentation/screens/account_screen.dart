@@ -1,7 +1,7 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/theme_cubit.dart';
 import 'package:flowly/logic/cubits/settings_cubit.dart';
-import 'package:flowly/presentation/screens/add_staff_screen.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -129,10 +129,7 @@ class AccountScreen extends StatelessWidget {
               subtitle: const Text("Create account for an employee"),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddStaffScreen()),
-                );
+                Navigator.pushNamed(context, Routes.addStaff);
               },
             ),
             const Divider(),

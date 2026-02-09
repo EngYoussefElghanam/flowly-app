@@ -1,6 +1,6 @@
 import 'package:flowly/logic/cubits/auth_cubit.dart';
 import 'package:flowly/logic/cubits/staff_cubit.dart'; // Import StaffCubit
-import 'package:flowly/presentation/screens/login_screen.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -45,9 +45,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
           context.read<StaffCubit>().verifyStaff(widget.email, code, token);
         } else {
           // Security fallback: If they lost session, send to login
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
+          Navigator.of(context).pushReplacementNamed(Routes.login);
         }
       }
     }

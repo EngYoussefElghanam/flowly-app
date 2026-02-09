@@ -1,8 +1,7 @@
-import 'package:flowly/presentation/screens/signup_screen.dart';
+import 'package:flowly/core/routing/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/auth_cubit.dart';
-import 'main_wrapper.dart'; // We navigate to the Wrapper, not just Home
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,9 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else if (state is AuthSuccess) {
             // Navigate to MainWrapper (The layout with the Bottom Bar)
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MainWrapper()),
-            );
+            Navigator.of(context).pushReplacementNamed(Routes.main);
           }
         },
         builder: (context, state) {
@@ -176,12 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text("Don't have an account?"),
                         TextButton(
                           onPressed: () => {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SignupScreen(),
-                              ),
-                            ),
+                            Navigator.pushNamed(context, Routes.signup),
                           },
                           child: Text("Create One"),
                         ),
