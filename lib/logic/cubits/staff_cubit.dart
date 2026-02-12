@@ -15,6 +15,7 @@ class StaffCubit extends Cubit<StaffState> {
     required String email,
     required String password,
     required String phone,
+    required String token,
     required int ownerId,
   }) async {
     emit(StaffLoading());
@@ -24,6 +25,7 @@ class StaffCubit extends Cubit<StaffState> {
         email: email,
         password: password,
         phone: phone,
+        token: token,
         ownerId: ownerId,
       );
       emit(StaffVerifying(email));

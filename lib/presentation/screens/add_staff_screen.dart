@@ -34,6 +34,7 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
           password: _passwordController.text.trim(),
           phone: _phoneController.text.trim(), // Will send "" if empty
           ownerId: currentUser.userId,
+          token: currentUser.token,
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

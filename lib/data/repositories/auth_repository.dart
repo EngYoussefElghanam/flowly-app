@@ -111,6 +111,7 @@ class AuthRepository {
     required String email,
     required String password,
     required String phone,
+    required String token,
     required int ownerId,
   }) async {
     try {
@@ -122,7 +123,11 @@ class AuthRepository {
         "role": "EMPLOYEE",
         "ownerId": ownerId,
       };
-      await _dio.post("$baseUrl/api/signup/initiate", data: data);
+      await _dio.post(
+        "$baseUrl/api/signup/invite",
+        options: Options(headers: {"Authorization": "Bearer $token"}),
+        data: data,
+      );
 
       // Note: The UI for adding staff will now need to ask the owner
       // to enter the code sent to the *employee's* email to verify them immediately.
