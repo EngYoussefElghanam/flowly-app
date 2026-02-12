@@ -1,86 +1,149 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/cubits/dashboard_cubit.dart';
+import '../../logic/cubits/auth_cubit.dart'; // Import AuthCubit
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
+  // Helper method to handle the refresh logic
+  Future<void> _refreshData(BuildContext context) async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      // ✅ Call getStats with the token
+      await context.read<DashboardCubit>().getStats(authState.user.token);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. Capture Theme
     final theme = Theme.of(context);
 
-    return BlocBuilder<DashboardCubit, DashboardState>(
-      builder: (context, state) {
-        if (state is DashboardLoading) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (state is DashboardError) {
-          return Center(
-            child: Text(
-              state.message,
-              // 2. Use Theme Error Color
-              style: TextStyle(color: theme.colorScheme.error),
-            ),
-          );
-        } else if (state is DashboardSuccess) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                // 3. Title adapts to Light/Dark mode automatically
-                Text(
-                  "Overview",
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
+    // 1. Wrap everything in a RefreshIndicator for Pull-to-Refresh
+    return RefreshIndicator(
+      onRefresh: () => _refreshData(context),
+      color: theme.colorScheme.primary,
+      child: BlocBuilder<DashboardCubit, DashboardState>(
+        builder: (context, state) {
+          // If loading, show spinner (but allow refresh if it gets stuck)
+          if (state is DashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.0,
+          if (state is DashboardError) {
+            // 2. Make Error state scrollable so you can Pull-to-Refresh out of an error
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.4),
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _StatCard(
-                        title: "Revenue",
-                        value:
-                            "\$${state.stats.totalRevenue.toStringAsFixed(2)}",
-                        icon: Icons.attach_money,
-                        color: const Color(0xFF00C853), // Green
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: theme.colorScheme.error,
                       ),
-                      _StatCard(
-                        title: "Orders",
-                        value: "${state.stats.totalOrders}",
-                        icon: Icons.shopping_bag_outlined,
-                        color: const Color(0xFF2979FF), // Blue
+                      const SizedBox(height: 16),
+                      Text(
+                        state.message,
+                        style: TextStyle(color: theme.colorScheme.error),
+                        textAlign: TextAlign.center,
                       ),
-                      _StatCard(
-                        title: "Profit",
-                        value:
-                            "\$${state.stats.totalProfit.toStringAsFixed(2)}",
-                        icon: Icons.trending_up,
-                        color: const Color(0xFFAA00FF), // Purple
-                      ),
-                      _StatCard(
-                        title: "Avg. Value",
-                        value:
-                            "\$${state.stats.averageOrderValue.toStringAsFixed(2)}",
-                        icon: Icons.pie_chart_outline,
-                        color: const Color(0xFFFF9100), // Orange
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _refreshData(context),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text("Retry"),
                       ),
                     ],
                   ),
                 ),
               ],
-            ),
-          );
-        }
-        return const Center(child: CircularProgressIndicator());
-      },
+            );
+          }
+
+          if (state is DashboardSuccess) {
+            // 3. Switch to ListView so the whole page scrolls
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              physics:
+                  const AlwaysScrollableScrollPhysics(), // Ensures pull-to-refresh works even if content is short
+              children: [
+                const SizedBox(height: 10),
+
+                // Header Row with Refresh Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Overview",
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // Manual Refresh Button
+                    IconButton(
+                      onPressed: () => _refreshData(context),
+                      icon: Icon(
+                        Icons.refresh,
+                        color: theme.colorScheme.primary,
+                      ),
+                      tooltip: "Refresh Data",
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // 4. GridView inside ListView
+                // We use shrinkWrap + NeverScrollableScrollPhysics so the ListView handles the scrolling
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.0,
+                  children: [
+                    _StatCard(
+                      title: "Revenue",
+                      value: "\$${state.stats.totalRevenue.toStringAsFixed(2)}",
+                      icon: Icons.attach_money,
+                      color: const Color(0xFF00C853),
+                    ),
+                    _StatCard(
+                      title: "Orders",
+                      value: "${state.stats.totalOrders}",
+                      icon: Icons.shopping_bag_outlined,
+                      color: const Color(0xFF2979FF),
+                    ),
+                    _StatCard(
+                      title: "Profit",
+                      value: "\$${state.stats.totalProfit.toStringAsFixed(2)}",
+                      icon: Icons.trending_up,
+                      color: const Color(0xFFAA00FF),
+                    ),
+                    _StatCard(
+                      title: "Avg. Value",
+                      value:
+                          "\$${state.stats.averageOrderValue.toStringAsFixed(2)}",
+                      icon: Icons.pie_chart_outline,
+                      color: const Color(0xFFFF9100),
+                    ),
+                  ],
+                ),
+
+                // Added bottom padding so the last items aren't stuck to the screen edge
+                const SizedBox(height: 40),
+              ],
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }

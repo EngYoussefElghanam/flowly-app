@@ -23,30 +23,33 @@ class GrowthPage extends StatefulWidget {
 class _GrowthPageState extends State<GrowthPage> {
   final AppinioSwiperController swiperController = AppinioSwiperController();
 
+  // ✅ NEW: Refresh Logic for Stats + Marketing
+  Future<void> _refreshData(BuildContext context) async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      final token = authState.user.token;
+      // Run both requests in parallel
+      await Future.wait([
+        context.read<DashboardCubit>().getStats(token),
+        context.read<MarketingCubit>().loadOpportunities(token),
+      ]);
+    }
+  }
+
   Future<void> _launchWhatsApp(String phone, String message) async {
-    // 1. Clean the number (remove spaces, dashes, parentheses)
     String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
 
-    // 2. WhatsApp API requires an international code
-    // If your cleanPhone starts with '01', it's likely a local Egyptian number.
-    // We strip the '0' and add '20'. Adjust this logic if you serve other countries.
     if (cleanPhone.startsWith('01')) {
       cleanPhone = '20${cleanPhone.substring(1)}';
     }
 
-    // 3. Encode the message properly
     final encodedMessage = Uri.encodeComponent(message);
-
-    // 4. Try the Universal Link first (wa.me)
     final webUrl = Uri.parse("https://wa.me/$cleanPhone?text=$encodedMessage");
-
-    // 5. Try the Native Deep Link as fallback (whatsapp://)
     final nativeUrl = Uri.parse(
       "whatsapp://send?phone=$cleanPhone&text=$encodedMessage",
     );
 
     try {
-      // First try opening the app directly
       if (await canLaunchUrl(nativeUrl)) {
         await launchUrl(nativeUrl);
       } else if (await canLaunchUrl(webUrl)) {
@@ -55,9 +58,7 @@ class _GrowthPageState extends State<GrowthPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                "Could not launch WhatsApp. Check if it's installed.",
-              ),
+              content: Text("Could not launch WhatsApp."),
               backgroundColor: Colors.red,
             ),
           );
@@ -70,14 +71,14 @@ class _GrowthPageState extends State<GrowthPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. 🔐 AUTH GUARD
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthSuccess) return const SizedBox.shrink();
 
     final token = authState.user.token;
-    final user = authState.user; // We use this for Role Check
+    final user = authState.user;
     final theme = Theme.of(context);
     final String titleName = user.role == 'OWNER' ? user.name : "The Business";
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -93,55 +94,77 @@ class _GrowthPageState extends State<GrowthPage> {
             ),
           ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              "Growth Engine",
-              style: TextStyle(fontSize: 14, color: Colors.white70),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Growth Engine",
+                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+                Text(
+                  "Opportunities for $titleName",
+                  style: const TextStyle(
+                    fontSize: 18, // Reduced slightly to fit
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            Text(
-              "Opportunities for $titleName",
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            // ✅ Manual Refresh Button in AppBar
+            IconButton(
+              onPressed: () => _refreshData(context),
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              tooltip: "Refresh Data",
             ),
           ],
         ),
       ),
 
-      // 🔄 3. WRAP EVERYTHING IN DASHBOARD CUBIT
-      body: BlocBuilder<DashboardCubit, DashboardState>(
-        builder: (context, dashboardState) {
-          if (dashboardState is DashboardLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      // ✅ 1. Wrap Body in RefreshIndicator
+      body: RefreshIndicator(
+        onRefresh: () => _refreshData(context),
+        color: theme.colorScheme.primary,
+        child: BlocBuilder<DashboardCubit, DashboardState>(
+          builder: (context, dashboardState) {
+            // Allow pull-to-refresh even if loading/error
+            if (dashboardState is DashboardLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (dashboardState is DashboardError) {
-            return Center(
-              child: Text("Error loading dashboard: ${dashboardState.message}"),
-            );
-          }
-
-          if (dashboardState is DashboardSuccess) {
-            final stats = dashboardState.stats;
-
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (dashboardState is DashboardError) {
+              // Scrollable Error View so Pull-to-Refresh works
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  // 🔒 ROLE CHECK: Only OWNER sees the Financial Stats
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.4),
+                  Center(child: Text("Error: ${dashboardState.message}")),
+                ],
+              );
+            }
+
+            if (dashboardState is DashboardSuccess) {
+              final stats = dashboardState.stats;
+
+              // ✅ 2. Use ListView for scrolling support
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  const SizedBox(height: 16),
+
+                  // 🔒 ROLE CHECK
                   if (user.role == 'OWNER') ...[
                     BusinessStatsCard(stats: stats),
                     const SizedBox(height: 10),
                   ] else ...[
-                    // Small spacing for Employee instead of the big card
                     const SizedBox(height: 20),
                   ],
 
-                  // ... (Marketing Title Section) ...
+                  // Marketing Title
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -179,7 +202,7 @@ class _GrowthPageState extends State<GrowthPage> {
 
                   const SizedBox(height: 16),
 
-                  // 🎠 Middle Section: Swiper (Visible to BOTH)
+                  // 🎠 Swiper Section
                   SizedBox(
                     height: 420,
                     child: BlocBuilder<MarketingCubit, MarketingState>(
@@ -206,9 +229,9 @@ class _GrowthPageState extends State<GrowthPage> {
                               if (activity is Swipe) {
                                 final direction = activity.direction;
                                 if (previousIndex >=
-                                    marketingState.opportunities.length) {
+                                    marketingState.opportunities.length)
                                   return;
-                                }
+
                                 final opp =
                                     marketingState.opportunities[previousIndex];
                                 final dirString = direction
@@ -279,17 +302,16 @@ class _GrowthPageState extends State<GrowthPage> {
 
                   const SizedBox(height: 16),
 
-                  // 📉 Bottom Section: Highlights (Visible to BOTH)
                   OperationalHighlights(stats: stats),
 
                   const SizedBox(height: 40),
                 ],
-              ),
-            );
-          }
+              );
+            }
 
-          return const SizedBox.shrink();
-        },
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
@@ -313,7 +335,7 @@ class _GrowthPageState extends State<GrowthPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle, size: 60, color: Colors.green),
+            const Icon(Icons.check_circle, size: 60, color: Colors.green),
             const SizedBox(height: 16),
             Text(
               "All caught up!",
