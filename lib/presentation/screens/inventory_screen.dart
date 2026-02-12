@@ -20,6 +20,9 @@ class InventoryScreen extends StatelessWidget {
     final user = authState.user;
     final theme = Theme.of(context);
 
+    // 🔐 CHECK ROLE
+    final isOwner = user.role == 'OWNER';
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 80,
@@ -28,11 +31,7 @@ class InventoryScreen extends StatelessWidget {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F2027),
-                Color(0xFF203A43),
-                Color(0xFF2C5364),
-              ],
+              colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -74,9 +73,7 @@ class InventoryScreen extends StatelessWidget {
                 } else if (state is InventoryError) {
                   return RefreshIndicator(
                     onRefresh: () async {
-                      await context.read<InventoryCubit>().getProducts(
-                        token,
-                      );
+                      await context.read<InventoryCubit>().getProducts(token);
                     },
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -87,9 +84,7 @@ class InventoryScreen extends StatelessWidget {
                         Center(
                           child: Text(
                             state.message,
-                            style: TextStyle(
-                              color: theme.colorScheme.error,
-                            ),
+                            style: TextStyle(color: theme.colorScheme.error),
                           ),
                         ),
                       ],
@@ -99,9 +94,7 @@ class InventoryScreen extends StatelessWidget {
                   if (state.products.isEmpty) {
                     return RefreshIndicator(
                       onRefresh: () async {
-                        await context.read<InventoryCubit>().getProducts(
-                          token,
-                        );
+                        await context.read<InventoryCubit>().getProducts(token);
                       },
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -127,9 +120,7 @@ class InventoryScreen extends StatelessWidget {
                     color: theme.primaryColor,
                     backgroundColor: theme.colorScheme.surface,
                     onRefresh: () async {
-                      await context.read<InventoryCubit>().getProducts(
-                        token,
-                      );
+                      await context.read<InventoryCubit>().getProducts(token);
                     },
                     child: ListView.separated(
                       padding: const EdgeInsets.symmetric(
@@ -142,6 +133,7 @@ class InventoryScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         return _ProductItem(
                           product: state.products[index],
+                          isOwner: isOwner, // ✅ Pass role down
                         );
                       },
                     ),
@@ -152,7 +144,8 @@ class InventoryScreen extends StatelessWidget {
             ),
           ),
 
-          // 2. THE STICKY ADD BUTTON
+          // 2. THE STICKY ADD BUTTON (Owner Only? Optional, but safer)
+          // For now, kept visible for both as requested, but logic is easy to change.
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -226,12 +219,13 @@ class _StickyAddButton extends StatelessWidget {
   }
 }
 
-// 🎨 COMPONENT 2: The Product Item (UPDATED WITH ACTIONS)
+// 🎨 COMPONENT 2: The Product Item
 class _ProductItem extends StatelessWidget {
   final ProductModel product;
-  const _ProductItem({required this.product});
+  final bool isOwner; // ✅ Received from parent
 
-  // 🗑️ Delete Confirmation Logic
+  const _ProductItem({required this.product, required this.isOwner});
+
   void _confirmDelete(BuildContext context, String token) {
     showDialog(
       context: context,
@@ -247,8 +241,7 @@ class _ProductItem extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              // Call the Cubit to delete
+              Navigator.pop(ctx);
               context.read<InventoryCubit>().deleteProduct(token, product.id);
             },
             child: const Text(
@@ -265,7 +258,6 @@ class _ProductItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authState = context.read<AuthCubit>().state;
-    // Safely get token
     final token = (authState is AuthSuccess) ? authState.user.token : '';
     final bool isLowStock = product.stock < 5;
 
@@ -299,18 +291,19 @@ class _ProductItem extends StatelessWidget {
           product.name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
+        // 🔒 SECURITY FIX: Hide Cost Price for Employees
         subtitle: Text(
-          "Buy: \$${product.costPrice.toStringAsFixed(0)} | Sell: \$${product.sellPrice.toStringAsFixed(0)}",
+          isOwner
+              ? "Buy: \$${product.costPrice.toStringAsFixed(0)} | Sell: \$${product.sellPrice.toStringAsFixed(0)}"
+              : "Sell: \$${product.sellPrice.toStringAsFixed(0)}",
           style: TextStyle(
             fontSize: 12,
             color: theme.colorScheme.onSurface.withOpacity(0.6),
           ),
         ),
-        // ⚙️ UPDATED TRAILING SECTION
         trailing: Row(
-          mainAxisSize: MainAxisSize.min, // Essential for trailing usage
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // 1. Stock Info
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -333,24 +326,17 @@ class _ProductItem extends StatelessWidget {
               ],
             ),
             const SizedBox(width: 4),
-
-            // 2. Vertical Divider (Optional visual separation)
             Container(
               height: 24,
               width: 1,
               color: theme.dividerColor.withOpacity(0.5),
               margin: const EdgeInsets.symmetric(horizontal: 4),
             ),
-
-            // 3. Edit Button (Pen)
             IconButton(
               icon: const Icon(Icons.edit, size: 22, color: Colors.blue),
               tooltip: "Edit Product",
               onPressed: () {
-                // 🔐 We must pass the EXISTING InventoryCubit to the new screen
-                // so the 'Update' function can refresh this list automatically.
                 final inventoryCubit = context.read<InventoryCubit>();
-
                 Navigator.pushNamed(
                   context,
                   Routes.productForm,
@@ -361,17 +347,17 @@ class _ProductItem extends StatelessWidget {
                 );
               },
             ),
-
-            // 4. Delete Button (Trash)
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                size: 22,
-                color: Colors.red,
+            // Optional: Hide Delete for Employees too?
+            if (isOwner)
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 22,
+                  color: Colors.red,
+                ),
+                tooltip: "Delete Product",
+                onPressed: () => _confirmDelete(context, token),
               ),
-              tooltip: "Delete Product",
-              onPressed: () => _confirmDelete(context, token),
-            ),
           ],
         ),
       ),
